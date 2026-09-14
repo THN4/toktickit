@@ -26,20 +26,44 @@ enum TicketStatus {
   CLOSED
 }
 
-// ─── Development Requester ────────────────────────────────────────────────────
+enum UserRole {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
+}
 
-model RequesterUser {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─── User ───────────────────────────────────────────────────────────────────
+
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               UserRole @default(REQUESTER)
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   tickets             Ticket[]     @relation("TicketRequester")
   ownedTickets        Ticket[]     @relation("TicketOwner")
   uploadedAttachments Attachment[] @relation("AttachmentUploader")
   removedAttachments  Attachment[] @relation("AttachmentRemover")
+  sessions            Session[]
+}
+
+// ─── Server-side Session ────────────────────────────────────────────────────
+
+model Session {
+  id            String    @id
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt     DateTime
+  invalidatedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ─── Category ─────────────────────────────────────────────────────────────────
@@ -71,7 +95,7 @@ model Ticket {
   ticketNumber String @unique
 
   requesterId Int
-  requester   RequesterUser @relation("TicketRequester", fields: [requesterId], references: [id])
+  requester   User @relation("TicketRequester", fields: [requesterId], references: [id])
 
   categoryId      Int
   category        Category      @relation(fields: [categoryId], references: [id])
@@ -86,7 +110,7 @@ model Ticket {
   currentStatus     TicketStatus @default(NEW)
 
   ticketOwnerId Int?
-  ticketOwner   RequesterUser? @relation("TicketOwner", fields: [ticketOwnerId], references: [id])
+  ticketOwner   User? @relation("TicketOwner", fields: [ticketOwnerId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -107,7 +131,7 @@ model Attachment {
   ticket   Ticket @relation(fields: [ticketId], references: [id])
 
   uploaderId Int
-  uploader   RequesterUser @relation("AttachmentUploader", fields: [uploaderId], references: [id])
+  uploader   User @relation("AttachmentUploader", fields: [uploaderId], references: [id])
 
   originalFilename String
   storedFilename   String
@@ -117,7 +141,7 @@ model Attachment {
 
   removedAt            DateTime?
   removedByRequesterId Int?
-  removedBy            RequesterUser? @relation("AttachmentRemover", fields: [removedByRequesterId], references: [id])
+  removedBy            User? @relation("AttachmentRemover", fields: [removedByRequesterId], references: [id])
   removalReason        String?
 
   createdAt DateTime @default(now())
