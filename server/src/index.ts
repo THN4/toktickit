@@ -35,8 +35,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 app.get('/api/requesters', async (_req: Request, res: Response) => {
   try {
-    const requesters = await prisma.requesterUser.findMany({
-      where: { isActive: true },
+    const requesters = await prisma.user.findMany({
+      where: { isActive: true, role: 'REQUESTER' },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, email: true },
     });
@@ -103,8 +103,8 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
     if (!requesterId) {
       errors.push({ field: 'requesterId', message: 'Requester is required.' });
     } else {
-      const requester = await prisma.requesterUser.findUnique({
-        where: { id: Number(requesterId), isActive: true },
+      const requester = await prisma.user.findFirst({
+        where: { id: Number(requesterId), isActive: true, role: 'REQUESTER' },
       });
       if (!requester) {
         errors.push({ field: 'requesterId', message: 'Active requester not found.' });
@@ -232,8 +232,8 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
       });
     }
 
-    const requester = await prisma.requesterUser.findUnique({
-      where: { id: Number(requesterId), isActive: true },
+    const requester = await prisma.user.findFirst({
+      where: { id: Number(requesterId), isActive: true, role: 'REQUESTER' },
     });
     if (!requester) {
       return res.status(400).json({
