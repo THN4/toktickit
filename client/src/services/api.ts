@@ -1,5 +1,77 @@
 const BASE_URL = "http://localhost:3000";
 
+export type UserRole = "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  mustChangePassword: boolean;
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+  ) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function authRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}/api/auth${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new ApiError(
+      json.error?.message || "Authentication request failed.",
+      res.status,
+      json.error?.code,
+    );
+  }
+  return json.data as T;
+}
+
+export function login(email: string, password: string): Promise<{ user: AuthUser }> {
+  return authRequest("/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function logout(): Promise<{ loggedOut: boolean }> {
+  return authRequest("/logout", { method: "POST" });
+}
+
+export function fetchCurrentUser(): Promise<{ user: AuthUser }> {
+  return authRequest("/me", { method: "GET" });
+}
+
+export function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<{ user: AuthUser }> {
+  return authRequest("/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+  });
+}
+
 export interface Requester {
   id: number;
   name: string;
