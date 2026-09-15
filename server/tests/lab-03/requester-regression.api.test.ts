@@ -16,6 +16,8 @@ let sessionA = '';
 let sessionB = '';
 let ticketNumber = '';
 let attachmentId = 0;
+let categoryId = 0;
+let relatedSystemId = 0;
 
 const cookie = (id: string) => `toktickit_session=${id}`;
 
@@ -28,6 +30,8 @@ beforeAll(async () => {
   ]);
   if (!category || !relatedSystem) throw new Error('Seeded Category and Related System are required for requester regression tests.');
   requesterAId = requesterA.id;
+  categoryId = category.id;
+  relatedSystemId = relatedSystem.id;
   sessionA = randomBytes(32).toString('base64url');
   sessionB = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
@@ -62,6 +66,18 @@ describe('Lab 3 Requester regression through authenticated identity', () => {
     const spoofed = await request(app).get(`/api/tickets?requesterId=999999`).set('Cookie', cookie(sessionA));
     expect(spoofed.status).toBe(400);
     expect(spoofed.body.error.code).toBe('CLIENT_IDENTITY_NOT_ALLOWED');
+
+    const spoofedCreate = await request(app).post('/api/tickets').set('Cookie', cookie(sessionA)).send({
+      requesterId: 999999,
+      categoryId,
+      relatedSystemId,
+      requestedPriority: 'HIGH',
+      summary: 'Spoofed requester Ticket attempt',
+      description: 'This Ticket must not be created because its requester identity is client supplied.',
+    });
+    expect(spoofedCreate.status).toBe(400);
+    expect(spoofedCreate.body.error.code).toBe('CLIENT_IDENTITY_NOT_ALLOWED');
+    await expect(prisma.ticket.count({ where: { summary: 'Spoofed requester Ticket attempt' } })).resolves.toBe(0);
   });
 
   it('lists only the authenticated Requester data and hides another Requester Ticket', async () => {
@@ -75,6 +91,14 @@ describe('Lab 3 Requester regression through authenticated identity', () => {
   });
 
   it('preserves attachment ownership through the authenticated session', async () => {
+    const spoofedUpload = await request(app)
+      .post(`/api/tickets/${ticketNumber}/attachments`)
+      .set('Cookie', cookie(sessionA))
+      .field('requesterId', '999999')
+      .attach('file', Buffer.from('%PDF-1.4 spoofed'), { filename: 'spoofed.pdf', contentType: 'application/pdf' });
+    expect(spoofedUpload.status).toBe(400);
+    expect(spoofedUpload.body.error.code).toBe('CLIENT_IDENTITY_NOT_ALLOWED');
+
     const uploaded = await request(app)
       .post(`/api/tickets/${ticketNumber}/attachments`)
       .set('Cookie', cookie(sessionA))
@@ -82,6 +106,20 @@ describe('Lab 3 Requester regression through authenticated identity', () => {
     expect(uploaded.status).toBe(201);
     attachmentId = uploaded.body.data.id;
     expect(uploaded.body.data.uploaderId).toBe(requesterAId);
+
+    const spoofedDownload = await request(app)
+      .get(`/api/attachments/${attachmentId}/download?requesterId=999999`)
+      .set('Cookie', cookie(sessionA));
+    expect(spoofedDownload.status).toBe(400);
+    expect(spoofedDownload.body.error.code).toBe('CLIENT_IDENTITY_NOT_ALLOWED');
+
+    const spoofedDelete = await request(app)
+      .delete(`/api/attachments/${attachmentId}`)
+      .set('Cookie', cookie(sessionA))
+      .send({ requesterId: 999999, removalReason: 'Spoofed identity removal attempt.' });
+    expect(spoofedDelete.status).toBe(400);
+    expect(spoofedDelete.body.error.code).toBe('CLIENT_IDENTITY_NOT_ALLOWED');
+    await expect(prisma.attachment.findUnique({ where: { id: attachmentId }, select: { removedAt: true } })).resolves.toEqual({ removedAt: null });
 
     const otherDownload = await request(app).get(`/api/attachments/${attachmentId}/download`).set('Cookie', cookie(sessionB));
     expect(otherDownload.status).toBe(404);
