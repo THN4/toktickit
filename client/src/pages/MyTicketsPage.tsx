@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { useRequester } from "../contexts/RequesterContext";
 import {
   fetchTickets,
   fetchCategories,
@@ -12,7 +11,6 @@ import {
 type LoadState = "loading" | "success" | "error";
 
 export default function MyTicketsPage() {
-  const { requester } = useRequester();
 
   // Reference Data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -59,13 +57,11 @@ export default function MyTicketsPage() {
 
   // Fetch Tickets Callback
   const loadTickets = useCallback(async () => {
-    if (!requester) return;
     setLoadState("loading");
     setErrorMessage("");
 
     try {
       const data = await fetchTickets({
-        requesterId: requester.id,
         search: debouncedSearch,
         category: selectedCategory,
         requestedPriority: selectedPriority,
@@ -85,7 +81,6 @@ export default function MyTicketsPage() {
       setLoadState("error");
     }
   }, [
-    requester,
     debouncedSearch,
     selectedCategory,
     selectedPriority,

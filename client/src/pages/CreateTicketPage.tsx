@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useRequester } from "../contexts/RequesterContext";
+import { useAuth } from "../contexts/AuthContext";
 import {
   fetchCategories,
   fetchRelatedSystems,
@@ -21,7 +21,7 @@ const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export default function CreateTicketPage() {
-  const { requester } = useRequester();
+  const { user } = useAuth();
 
   // Reference Data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -131,15 +131,9 @@ export default function CreateTicketPage() {
     setServerError("");
 
     if (!validate()) return;
-    if (!requester) {
-      setServerError("No active requester context.");
-      return;
-    }
-
     try {
       setSubmitting(true);
       const ticket = await createTicket({
-        requesterId: requester.id,
         categoryId: Number(categoryId),
         relatedSystemId: Number(relatedSystemId),
         requestedPriority,
@@ -151,7 +145,7 @@ export default function CreateTicketPage() {
       const validFiles = attachments.filter((a) => !a.error);
       for (const item of validFiles) {
         try {
-          await uploadAttachment(ticket.ticketNumber, requester.id, item.file);
+          await uploadAttachment(ticket.ticketNumber, item.file);
         } catch {
           // preserve ticket even if upload fails
         }
@@ -232,7 +226,7 @@ export default function CreateTicketPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#F0F4F1] rounded-lg border border-[#D1E0D8] text-sm">
             <div>
               <span className="block text-xs font-semibold text-[#4A6355] uppercase tracking-wider">Requester</span>
-              <span className="font-medium text-[#1A2E22]">{requester?.name || "Unknown"}</span>
+              <span className="font-medium text-[#1A2E22]">{user?.name || "Unknown"}</span>
             </div>
             <div>
               <span className="block text-xs font-semibold text-[#4A6355] uppercase tracking-wider">Initial Status</span>

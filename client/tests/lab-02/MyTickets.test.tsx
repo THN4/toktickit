@@ -2,16 +2,9 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import MyTicketsPage from "../../src/pages/MyTicketsPage";
-import { RequesterProvider } from "../../src/contexts/RequesterContext";
 import * as api from "../../src/services/api";
 
 describe("UI-08, UI-09, UI-10: MyTickets Component Tests", () => {
-  const mockRequester = {
-    id: 1,
-    name: "Jennifer Anderson",
-    email: "jennifer@example.com",
-  };
-
   const mockCategories = [
     { id: 1, name: "Hardware" },
     { id: 2, name: "Software" },
@@ -19,18 +12,13 @@ describe("UI-08, UI-09, UI-10: MyTickets Component Tests", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    sessionStorage.clear();
-    sessionStorage.setItem("selectedRequester", JSON.stringify(mockRequester));
-
     vi.spyOn(api, "fetchCategories").mockResolvedValue(mockCategories);
   });
 
   function renderComponent() {
     return render(
       <BrowserRouter>
-        <RequesterProvider>
-          <MyTicketsPage />
-        </RequesterProvider>
+        <MyTicketsPage />
       </BrowserRouter>
     );
   }
