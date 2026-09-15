@@ -15,7 +15,7 @@ criterion in `specification.md` maps to at least one planned test.
 | API-03 | API | AC-03 | Initial password blocks normal APIs until changed | `server/tests/lab-03/auth.api.test.ts`, `server/tests/lab-03/authorization.api.test.ts` | Implemented — database verification pending |
 | API-04 | API | AC-04 | Logout invalidates session | `server/tests/lab-03/auth.api.test.ts` | Implemented — database verification pending |
 | API-05 | Security | AC-05, BR-07 | Requester cannot select another requester ID | `server/tests/lab-03/authorization.api.test.ts` | Implemented — database verification pending |
-| API-06 | Regression | AC-06 | Owned Lab 2 Ticket/Attachment flows remain available | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| API-06 | Regression | AC-06 | Owned Lab 2 Ticket/Attachment flows remain available | `server/tests/lab-03/requester-regression.api.test.ts` | Pass (3 tests) |
 | API-07 | API | AC-07, BR-22–23 | Queue search/filter/sort/pagination metadata | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
 | API-08 | API | AC-08 | Invalid Queue query is 400 | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
 | API-09 | API | AC-09–11 | Claim/assignment/priority/status workflow validation | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
