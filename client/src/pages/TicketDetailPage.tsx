@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useRequester } from "../contexts/RequesterContext";
 import {
   fetchTicketDetail,
   uploadAttachment,
@@ -17,7 +16,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export default function TicketDetailPage() {
   const { ticketNumber } = useParams<{ ticketNumber: string }>();
-  const { requester } = useRequester();
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -34,12 +32,12 @@ export default function TicketDetailPage() {
   const [isRemoving, setIsRemoving] = useState(false);
 
   const loadDetail = useCallback(async () => {
-    if (!ticketNumber || !requester) return;
+    if (!ticketNumber) return;
     setLoadState("loading");
     setErrorMessage("");
 
     try {
-      const data = await fetchTicketDetail(ticketNumber, requester.id);
+      const data = await fetchTicketDetail(ticketNumber);
       setTicket(data);
       setLoadState("success");
     } catch (err: unknown) {
@@ -47,7 +45,7 @@ export default function TicketDetailPage() {
       setErrorMessage(msg);
       setLoadState("error");
     }
-  }, [ticketNumber, requester]);
+  }, [ticketNumber]);
 
   useEffect(() => {
     loadDetail();
@@ -68,7 +66,7 @@ export default function TicketDetailPage() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setUploadError("");
     const file = e.target.files?.[0];
-    if (!file || !ticketNumber || !requester) return;
+    if (!file || !ticketNumber) return;
 
     // Check type (UI-03, AC-07)
     const ext = "." + file.name.split(".").pop()?.toLowerCase();
@@ -94,7 +92,7 @@ export default function TicketDetailPage() {
 
     setIsUploading(true);
     try {
-      await uploadAttachment(ticketNumber, requester.id, file);
+      await uploadAttachment(ticketNumber, file);
       e.target.value = "";
       await loadDetail(); // Refresh list
     } catch (err: unknown) {
@@ -107,7 +105,7 @@ export default function TicketDetailPage() {
 
   // Handle Soft-Removal confirmation
   async function handleConfirmRemoval() {
-    if (!removingAttachment || !requester) return;
+    if (!removingAttachment) return;
     if (!removalReason.trim()) {
       setRemovalError("Reason for removal is required.");
       return;
@@ -117,7 +115,7 @@ export default function TicketDetailPage() {
     setRemovalError("");
 
     try {
-      await deleteAttachment(removingAttachment.id, requester.id, removalReason.trim());
+      await deleteAttachment(removingAttachment.id, removalReason.trim());
       setRemovingAttachment(null);
       setRemovalReason("");
       await loadDetail();
@@ -331,7 +329,7 @@ export default function TicketDetailPage() {
                           {!isRemoved ? (
                             <>
                               <a
-                                href={requester ? getAttachmentDownloadUrl(a.id, requester.id) : "#"}
+                                href={getAttachmentDownloadUrl(a.id)}
                                 download
                                 className="px-3 py-1.5 border border-[#D1E0D8] hover:bg-[#EAF6EF] text-[#006B3C] font-semibold text-xs rounded-lg transition-colors"
                               >
