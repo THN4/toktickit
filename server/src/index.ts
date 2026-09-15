@@ -120,6 +120,46 @@ async function requireAuthentication(req: AuthenticatedRequest, res: Response, n
   next();
 }
 
+function requireRequester(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const user = req.auth?.user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' },
+    });
+  }
+  if (user.mustChangePassword) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'PASSWORD_CHANGE_REQUIRED', message: 'A password change is required.' },
+    });
+  }
+  if (user.role !== 'REQUESTER') {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN', message: 'Requester access is required.' },
+    });
+  }
+  next();
+}
+
+function hasClientSuppliedRequesterId(req: Request): boolean {
+  return Object.prototype.hasOwnProperty.call(req.query ?? {}, 'requesterId')
+    || Object.prototype.hasOwnProperty.call(req.body ?? {}, 'requesterId');
+}
+
+function rejectClientSuppliedRequesterId(req: Request, res: Response): boolean {
+  if (!hasClientSuppliedRequesterId(req)) return false;
+  res.status(400).json({
+    success: false,
+    error: {
+      code: 'CLIENT_IDENTITY_NOT_ALLOWED',
+      message: 'Requester identity is derived from the authenticated session.',
+    },
+  });
+  return true;
+}
+
 // ─── Authentication ─────────────────────────────────────────────────────────
 
 app.post('/api/auth/login', requireTrustedOrigin, async (req: Request, res: Response) => {
@@ -249,24 +289,6 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({ success: true, status: 'ok', service: 'TokTickIT API' });
 });
 
-// ─── GET /api/requesters — active Development Requesters only (BR-04) ─────────
-
-app.get('/api/requesters', async (_req: Request, res: Response) => {
-  try {
-    const requesters = await prisma.user.findMany({
-      where: { isActive: true, role: 'REQUESTER' },
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true, email: true },
-    });
-    res.status(200).json({ success: true, data: requesters });
-  } catch {
-    res.status(500).json({
-      success: false,
-      error: { code: 'SERVER_ERROR', message: 'Unable to fetch requesters.' },
-    });
-  }
-});
-
 // ─── GET /api/categories — active categories only ─────────────────────────────
 
 app.get('/api/categories', async (_req: Request, res: Response) => {
@@ -305,30 +327,19 @@ app.get('/api/related-systems', async (_req: Request, res: Response) => {
 
 // ─── POST /api/tickets ────────────────────────────────────────────────────────
 
-app.post('/api/tickets', async (req: Request, res: Response) => {
+app.post('/api/tickets', requireTrustedOrigin, requireAuthentication, requireRequester, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
-      requesterId,
       categoryId,
       relatedSystemId,
       requestedPriority,
       summary,
       description,
     } = req.body;
+    if (rejectClientSuppliedRequesterId(req, res)) return;
     const errors: { field: string; message: string }[] = [];
     // --- Validation Rules ---
-    // 1. ตรวจสอบ Requester
-    if (!requesterId) {
-      errors.push({ field: 'requesterId', message: 'Requester is required.' });
-    } else {
-      const requester = await prisma.user.findFirst({
-        where: { id: Number(requesterId), isActive: true, role: 'REQUESTER' },
-      });
-      if (!requester) {
-        errors.push({ field: 'requesterId', message: 'Active requester not found.' });
-      }
-    }
-    // 2. ตรวจสอบ Category
+    // 1. ตรวจสอบ Category
     if (!categoryId) {
       errors.push({ field: 'categoryId', message: 'Category is required.' });
     } else {
@@ -339,7 +350,7 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
         errors.push({ field: 'categoryId', message: 'Active category not found.' });
       }
     }
-    // 3. ตรวจสอบ Related System
+    // 2. ตรวจสอบ Related System
     if (!relatedSystemId) {
       errors.push({ field: 'relatedSystemId', message: 'Related System is required.' });
     } else {
@@ -350,17 +361,17 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
         errors.push({ field: 'relatedSystemId', message: 'Active related system not found.' });
       }
     }
-    // 4. ตรวจสอบ Priority
+    // 3. ตรวจสอบ Priority
     const validPriorities = ['LOW', 'MEDIUM', 'HIGH'];
     if (!requestedPriority || !validPriorities.includes(requestedPriority)) {
       errors.push({ field: 'requestedPriority', message: 'Requested priority must be LOW, MEDIUM, or HIGH.' });
     }
-    // 5. ตรวจสอบ Summary (BR-07)
+    // 4. ตรวจสอบ Summary (BR-07)
     const summaryError = validateSummary(summary);
     if (summaryError) {
       errors.push(summaryError);
     }
-    // 6. ตรวจสอบ Description (BR-08)
+    // 5. ตรวจสอบ Description (BR-08)
     const descriptionError = validateDescription(description);
     if (descriptionError) {
       errors.push(descriptionError);
@@ -389,7 +400,7 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
         newTicket = await prisma.ticket.create({
           data: {
             ticketNumber,
-            requesterId: Number(requesterId),
+            requesterId: req.auth!.user.id,
             categoryId: Number(categoryId),
             relatedSystemId: Number(relatedSystemId),
             requestedPriority,
@@ -427,10 +438,9 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
 });
 
 // ─── GET /api/tickets — My Tickets (Ownership + Search + Filter + Sort + Pagination) ───
-app.get('/api/tickets', async (req: Request, res: Response) => {
+app.get('/api/tickets', requireAuthentication, requireRequester, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
-      requesterId,
       search,
       category,
       requestedPriority,
@@ -441,24 +451,7 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
       page = '1',
       pageSize = '10',
     } = req.query;
-
-    // 1. ตรวจสอบ requesterId (BR-06: Ownership check)
-    if (!requesterId) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_REQUESTER', message: 'requesterId is required.' },
-      });
-    }
-
-    const requester = await prisma.user.findFirst({
-      where: { id: Number(requesterId), isActive: true, role: 'REQUESTER' },
-    });
-    if (!requester) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'INVALID_REQUESTER', message: 'Active requester not found.' },
-      });
-    }
+    if (rejectClientSuppliedRequesterId(req, res)) return;
 
     // 2. ตรวจสอบ Pagination parameters (BR-24, BR-25)
     const pageNum = parseInt(page as string, 10);
@@ -494,7 +487,7 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
 
     // 4. ประกอบเงื่อนไข Where Query (Prisma)
     const where: any = {
-      requesterId: Number(requesterId), // 👈 ล็อกสิทธิ์เฉพาะของ Requester คนนี้เท่านั้น
+      requesterId: req.auth!.user.id,
     };
 
     // ค้นหาข้อความ (BR-26: summary หรือ ticketNumber แบบ Case-insensitive)
@@ -608,17 +601,10 @@ const upload = multer({
 });
 
 // ─── GET /api/tickets/:ticketNumber — Ticket Detail (FR-06, BR-06, AC-03, AC-16) ───
-app.get('/api/tickets/:ticketNumber', async (req: Request, res: Response) => {
+app.get('/api/tickets/:ticketNumber', requireAuthentication, requireRequester, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { ticketNumber } = req.params;
-    const { requesterId } = req.query;
-
-    if (!requesterId) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_REQUESTER', message: 'requesterId is required.' },
-      });
-    }
+    if (rejectClientSuppliedRequesterId(req, res)) return;
 
     const ticket = await prisma.ticket.findUnique({
       where: { ticketNumber: ticketNumber as string },
@@ -645,10 +631,10 @@ app.get('/api/tickets/:ticketNumber', async (req: Request, res: Response) => {
     }
 
     // Ownership check (BR-06, AC-03)
-    if (ticket.requesterId !== Number(requesterId)) {
-      return res.status(403).json({
+    if (ticket.requesterId !== req.auth!.user.id) {
+      return res.status(404).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'You do not have access to this ticket.' },
+        error: { code: 'NOT_FOUND', message: 'Ticket not found.' },
       });
     }
 
@@ -665,7 +651,7 @@ app.get('/api/tickets/:ticketNumber', async (req: Request, res: Response) => {
 });
 
 // ─── POST /api/tickets/:ticketNumber/attachments — Upload Attachment (FR-07, BR-16, BR-17, BR-18) ───
-app.post('/api/tickets/:ticketNumber/attachments', (req: Request, res: Response, next: NextFunction) => {
+app.post('/api/tickets/:ticketNumber/attachments', requireTrustedOrigin, requireAuthentication, requireRequester, (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   upload.single('file')(req, res, (err: any) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -687,9 +673,8 @@ app.post('/api/tickets/:ticketNumber/attachments', (req: Request, res: Response,
     }
     next();
   });
-}, async (req: Request, res: Response) => {
+}, async (req: AuthenticatedRequest, res: Response) => {
   const { ticketNumber } = req.params;
-  const requesterId = req.body.requesterId || req.query.requesterId;
   const file = req.file;
 
   const cleanupFile = () => {
@@ -699,12 +684,9 @@ app.post('/api/tickets/:ticketNumber/attachments', (req: Request, res: Response,
   };
 
   try {
-    if (!requesterId) {
+    if (rejectClientSuppliedRequesterId(req, res)) {
       cleanupFile();
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_REQUESTER', message: 'requesterId is required.' },
-      });
+      return;
     }
 
     if (!file) {
@@ -727,11 +709,11 @@ app.post('/api/tickets/:ticketNumber/attachments', (req: Request, res: Response,
     }
 
     // Ownership check (BR-06)
-    if (ticket.requesterId !== Number(requesterId)) {
+    if (ticket.requesterId !== req.auth!.user.id) {
       cleanupFile();
-      return res.status(403).json({
+      return res.status(404).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'You do not have permission to attach files to this ticket.' },
+        error: { code: 'NOT_FOUND', message: 'Ticket not found.' },
       });
     }
 
@@ -755,7 +737,7 @@ app.post('/api/tickets/:ticketNumber/attachments', (req: Request, res: Response,
     const attachment = await prisma.attachment.create({
       data: {
         ticketId: ticket.id,
-        uploaderId: Number(requesterId),
+        uploaderId: req.auth!.user.id,
         originalFilename: file.originalname,
         storedFilename: file.filename,
         mimeType: file.mimetype,
@@ -781,17 +763,10 @@ app.post('/api/tickets/:ticketNumber/attachments', (req: Request, res: Response,
 });
 
 // ─── GET /api/attachments/:id/download — Download Attachment (FR-08, BR-20, AC-19, AC-21) ───
-app.get('/api/attachments/:id/download', async (req: Request, res: Response) => {
+app.get('/api/attachments/:id/download', requireAuthentication, requireRequester, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { requesterId } = req.query;
-
-    if (!requesterId) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_REQUESTER', message: 'requesterId is required.' },
-      });
-    }
+    if (rejectClientSuppliedRequesterId(req, res)) return;
 
     const attachment = await prisma.attachment.findUnique({
       where: { id: Number(id) },
@@ -806,10 +781,10 @@ app.get('/api/attachments/:id/download', async (req: Request, res: Response) => 
     }
 
     // Ownership check (BR-06)
-    if (attachment.ticket.requesterId !== Number(requesterId)) {
-      return res.status(403).json({
+    if (attachment.ticket.requesterId !== req.auth!.user.id) {
+      return res.status(404).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'You do not have permission to download this attachment.' },
+        error: { code: 'NOT_FOUND', message: 'Attachment not found.' },
       });
     }
 
@@ -838,17 +813,11 @@ app.get('/api/attachments/:id/download', async (req: Request, res: Response) => 
 });
 
 // ─── DELETE /api/attachments/:id — Soft-Remove Attachment (FR-09, BR-19, BR-21, AC-20) ───
-app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
+app.delete('/api/attachments/:id', requireTrustedOrigin, requireAuthentication, requireRequester, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { requesterId, removalReason } = req.body;
-
-    if (!requesterId) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'MISSING_REQUESTER', message: 'requesterId is required.' },
-      });
-    }
+    const { removalReason } = req.body;
+    if (rejectClientSuppliedRequesterId(req, res)) return;
 
     // Validation: removalReason is required (1-500 chars) per BR-19 & API-25
     if (
@@ -879,10 +848,10 @@ app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
     }
 
     // Ownership check (BR-06)
-    if (attachment.ticket.requesterId !== Number(requesterId)) {
-      return res.status(403).json({
+    if (attachment.ticket.requesterId !== req.auth!.user.id) {
+      return res.status(404).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'You do not have permission to remove this attachment.' },
+        error: { code: 'NOT_FOUND', message: 'Attachment not found.' },
       });
     }
 
@@ -900,7 +869,7 @@ app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
       data: {
         removedAt: new Date(),
         removalReason: removalReason.trim(),
-        removedByRequesterId: Number(requesterId),
+        removedByRequesterId: req.auth!.user.id,
       },
       include: {
         uploader: { select: { id: true, name: true } },
