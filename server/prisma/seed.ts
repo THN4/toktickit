@@ -73,7 +73,7 @@ async function main() {
     { name: "Nina Patel", email: "nina.patel@example.com", role: "IT_STAFF", isActive: true },
     { name: "Owen Garcia", email: "owen.garcia@example.com", role: "IT_STAFF", isActive: true },
     { name: "Priya Shah", email: "priya.shah@example.com", role: "IT_STAFF", isActive: true },
-    { name: "Quinn Walker", email: "quinn.walker@example.com", role: "IT_STAFF", isActive: true },
+    { name: "Quinn Walker", email: "quinn.walker@example.com", role: "IT_STAFF", isActive: false },
     { name: "Morgan Chen", email: "morgan.chen@example.com", role: "ADMINISTRATOR", isActive: true },
   ];
 
