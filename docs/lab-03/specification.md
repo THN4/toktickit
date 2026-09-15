@@ -1,7 +1,7 @@
 # Lab 3 Sprint Engineering Specification
 
-> **Status:** Draft — Awaiting student review and approval before implementation begins.
-> **Last Updated:** 2026-09-13
+> **Status:** Approved — Team contract for Lab 3 implementation.
+> **Last Updated:** 2026-09-15
 > **Sprint:** Lab 3 — TokTickIT Users, Roles, IT Staff Ticketing, and Administrator User Management
 
 ---
@@ -101,7 +101,7 @@ normal IT Staff Ticket operations.
 | BR-06 | One User has exactly one permitted role: `REQUESTER`, `IT_STAFF`, or `ADMINISTRATOR`. |
 | BR-07 | The backend derives the Requester identity from the authenticated session. A client-supplied `requesterId`, user ID, or equivalent cannot select another Requester's data. |
 | BR-08 | A Requester may read and manage only owned Tickets and Attachments, subject to the existing Lab 2 attachment rules. |
-| BR-09 | A Ticket has one submitting Requester and zero or one primary Ticket Owner. An owner, when present, must be active and have an IT Staff or Administrator role. |
+| BR-09 | A Ticket has one submitting Requester and zero or one primary Ticket Owner. An owner, when present, must be an active IT Staff User. Administrators do not own Tickets in this sprint because their role is limited to User Management. |
 | BR-10 | Requested Priority is submitted by the Requester. IT Priority initially copies Requested Priority and may subsequently be changed only by IT Staff. |
 | BR-11 | Required Ticket statuses are `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, and `CANCELLED`. |
 | BR-12 | The permitted status transition matrix is: `NEW → OPEN|CANCELLED`; `OPEN → IN_PROGRESS|WAITING_FOR_REQUESTER|CANCELLED`; `IN_PROGRESS → WAITING_FOR_REQUESTER|RESOLVED|CANCELLED`; `WAITING_FOR_REQUESTER → IN_PROGRESS|CANCELLED`; `RESOLVED → CLOSED|REOPENED`; `CLOSED → REOPENED`; `REOPENED → OPEN|IN_PROGRESS|WAITING_FOR_REQUESTER|CANCELLED`; `CANCELLED → REOPENED`. |
