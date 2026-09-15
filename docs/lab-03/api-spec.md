@@ -42,6 +42,10 @@ Safe User shape: `{ id, name, email, role, isActive, mustChangePassword }`.
 Login never returns a password/hash. Invalid credential and inactive-account
 responses use the same safe message.
 
+Sessions expire after 8 hours and are represented only by an opaque `HttpOnly`
+cookie. A new password must be 12–128 characters and exactly match its
+confirmation; the backend does not trim password values.
+
 ## 3. Requester Continuity
 
 Existing Lab 2 Ticket/Attachment endpoints remain, but no longer accept

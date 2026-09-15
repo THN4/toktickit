@@ -3,6 +3,8 @@ import cors from 'cors';
 import "dotenv/config";
 import path from 'path';
 import fs from 'fs';
+import { randomBytes } from 'crypto';
+import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -18,12 +20,228 @@ const prisma = new PrismaClient({ adapter });
 
 const app = express();
 const PORT = 3000;
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
+const SESSION_COOKIE_NAME = 'toktickit_session';
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const PASSWORD_MIN_LENGTH = 12;
 
 export { app };
 export default app;
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
+
+type SafeUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: 'REQUESTER' | 'IT_STAFF' | 'ADMINISTRATOR';
+  isActive: boolean;
+  mustChangePassword: boolean;
+};
+
+type AuthenticatedRequest = Request & { auth?: { sessionId: string; user: SafeUser } };
+
+const safeUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  isActive: true,
+  mustChangePassword: true,
+} as const;
+
+function readCookie(req: Request, name: string): string | undefined {
+  const cookies = req.headers.cookie;
+  if (!cookies) return undefined;
+
+  for (const part of cookies.split(';')) {
+    const [key, ...value] = part.trim().split('=');
+    if (key === name && value.length > 0) {
+      try {
+        return decodeURIComponent(value.join('='));
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: SESSION_TTL_MS,
+    path: '/',
+  };
+}
+
+function requireTrustedOrigin(req: Request, res: Response, next: NextFunction) {
+  const origin = req.get('origin');
+  if (origin && origin !== CLIENT_ORIGIN) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN', message: 'Request origin is not allowed.' },
+    });
+  }
+  next();
+}
+
+async function requireAuthentication(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const sessionId = readCookie(req, SESSION_COOKIE_NAME);
+  if (!sessionId) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' },
+    });
+  }
+
+  const session = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      invalidatedAt: null,
+      expiresAt: { gt: new Date() },
+      user: { isActive: true },
+    },
+    select: { id: true, user: { select: safeUserSelect } },
+  });
+
+  if (!session) {
+    res.clearCookie(SESSION_COOKIE_NAME, sessionCookieOptions());
+    return res.status(401).json({
+      success: false,
+      error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' },
+    });
+  }
+
+  req.auth = { sessionId: session.id, user: session.user };
+  next();
+}
+
+// ─── Authentication ─────────────────────────────────────────────────────────
+
+app.post('/api/auth/login', requireTrustedOrigin, async (req: Request, res: Response) => {
+  const { email, password } = req.body ?? {};
+  if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'Email and password are required.' },
+    });
+  }
+
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { ...safeUserSelect, passwordHash: true },
+    });
+
+    if (!user || !user.isActive || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' },
+      });
+    }
+
+    const sessionId = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+    await prisma.session.create({ data: { id: sessionId, userId: user.id, expiresAt } });
+
+    res.cookie(SESSION_COOKIE_NAME, sessionId, sessionCookieOptions());
+    return res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          mustChangePassword: user.mustChangePassword,
+        },
+      },
+    });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Unable to sign in.' },
+    });
+  }
+});
+
+app.post('/api/auth/logout', requireTrustedOrigin, requireAuthentication, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await prisma.session.update({
+      where: { id: req.auth!.sessionId },
+      data: { invalidatedAt: new Date() },
+    });
+    res.clearCookie(SESSION_COOKIE_NAME, sessionCookieOptions());
+    return res.status(200).json({ success: true, data: { loggedOut: true } });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Unable to sign out.' },
+    });
+  }
+});
+
+app.get('/api/auth/me', requireAuthentication, (req: AuthenticatedRequest, res: Response) => {
+  return res.status(200).json({ success: true, data: { user: req.auth!.user } });
+});
+
+app.post('/api/auth/change-password', requireTrustedOrigin, requireAuthentication, async (req: AuthenticatedRequest, res: Response) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body ?? {};
+  if (
+    typeof currentPassword !== 'string'
+    || typeof newPassword !== 'string'
+    || typeof confirmPassword !== 'string'
+    || newPassword.length < PASSWORD_MIN_LENGTH
+    || newPassword.length > 128
+    || newPassword !== confirmPassword
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'Please provide a valid new password and confirmation.' },
+    });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.auth!.user.id },
+      select: { passwordHash: true },
+    });
+    if (!user?.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Unable to change password with the supplied values.' },
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: req.auth!.user.id },
+        data: { passwordHash, mustChangePassword: false },
+      }),
+      prisma.session.updateMany({
+        where: { userId: req.auth!.user.id, id: { not: req.auth!.sessionId }, invalidatedAt: null },
+        data: { invalidatedAt: now },
+      }),
+    ]);
+
+    const updatedUser = { ...req.auth!.user, mustChangePassword: false };
+    req.auth!.user = updatedUser;
+    return res.status(200).json({ success: true, data: { user: updatedUser } });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Unable to change password.' },
+    });
+  }
+});
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 
@@ -35,8 +253,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 app.get('/api/requesters', async (_req: Request, res: Response) => {
   try {
-    const requesters = await prisma.requesterUser.findMany({
-      where: { isActive: true },
+    const requesters = await prisma.user.findMany({
+      where: { isActive: true, role: 'REQUESTER' },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, email: true },
     });
@@ -103,8 +321,8 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
     if (!requesterId) {
       errors.push({ field: 'requesterId', message: 'Requester is required.' });
     } else {
-      const requester = await prisma.requesterUser.findUnique({
-        where: { id: Number(requesterId), isActive: true },
+      const requester = await prisma.user.findFirst({
+        where: { id: Number(requesterId), isActive: true, role: 'REQUESTER' },
       });
       if (!requester) {
         errors.push({ field: 'requesterId', message: 'Active requester not found.' });
@@ -232,8 +450,8 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
       });
     }
 
-    const requester = await prisma.requesterUser.findUnique({
-      where: { id: Number(requesterId), isActive: true },
+    const requester = await prisma.user.findFirst({
+      where: { id: Number(requesterId), isActive: true, role: 'REQUESTER' },
     });
     if (!requester) {
       return res.status(400).json({

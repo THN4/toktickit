@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
@@ -8,8 +9,20 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+type SeedUser = {
+  name: string;
+  email: string;
+  role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+  isActive: boolean;
+};
+
 async function main() {
   console.log("🌱 Seeding database...");
+
+  const initialPassword = process.env.LAB3_INITIAL_PASSWORD;
+  if (!initialPassword) {
+    throw new Error("LAB3_INITIAL_PASSWORD must be set before seeding users.");
+  }
 
   // ── Categories (spec Section 7.4) ─────────────────────────────────────────
   const categories = [
@@ -48,27 +61,64 @@ async function main() {
   }
   console.log(`  ✓ ${relatedSystems.length} related systems`);
 
-  // ── Development Requesters (spec Section 7.4) ─────────────────────────────
-  // Active requesters appear in the selector (BR-04)
-  // Inactive requester must NOT appear in the selector (BR-04)
-  const requesters = [
-    { name: "Jennifer Anderson", email: "jennifer.anderson@example.com", isActive: true  },
-    { name: "Michael Brown",     email: "michael.brown@example.com",     isActive: true  },
-    { name: "Sarah Johnson",     email: "sarah.johnson@example.com",     isActive: true  },
-    { name: "David Lee",         email: "david.lee@example.com",         isActive: true  },
-    { name: "Alex Turner",       email: "alex.turner@example.com",       isActive: false }, // inactive
+  // ── Lab 3 users (spec Section 7.4) ───────────────────────────────────────
+  // These emails are fixtures only. Initial credentials come from the local
+  // environment and are never written to source control.
+  const users: SeedUser[] = [
+    { name: "Jennifer Anderson", email: "jennifer.anderson@example.com", role: "REQUESTER", isActive: true },
+    { name: "Michael Brown", email: "michael.brown@example.com", role: "REQUESTER", isActive: true },
+    { name: "Sarah Johnson", email: "sarah.johnson@example.com", role: "REQUESTER", isActive: true },
+    { name: "David Lee", email: "david.lee@example.com", role: "REQUESTER", isActive: true },
+    { name: "Alex Turner", email: "alex.turner@example.com", role: "REQUESTER", isActive: false },
+    { name: "Nina Patel", email: "nina.patel@example.com", role: "IT_STAFF", isActive: true },
+    { name: "Owen Garcia", email: "owen.garcia@example.com", role: "IT_STAFF", isActive: true },
+    { name: "Priya Shah", email: "priya.shah@example.com", role: "IT_STAFF", isActive: true },
+    { name: "Quinn Walker", email: "quinn.walker@example.com", role: "IT_STAFF", isActive: false },
+    { name: "Morgan Chen", email: "morgan.chen@example.com", role: "ADMINISTRATOR", isActive: true },
   ];
 
-  for (const { name, email, isActive } of requesters) {
-    await prisma.requesterUser.upsert({
-      where:  { email },
-      update: { name, isActive },
-      create: { name, email, isActive },
+  for (const user of users) {
+    const email = user.email.trim().toLowerCase();
+    const existing = await prisma.user.findUnique({
+      where: { email },
+      select: { passwordHash: true },
+    });
+
+    // Existing Lab 2 Requesters have no hash. Backfill them once; later seed
+    // runs preserve a User-chosen password and its must-change state.
+    const needsPasswordBackfill = !existing?.passwordHash;
+    const passwordFields = needsPasswordBackfill
+      ? {
+          passwordHash: await bcrypt.hash(initialPassword, 12),
+          mustChangePassword: true,
+        }
+      : {};
+
+    await prisma.user.upsert({
+      where: { email },
+      update: {
+        name: user.name,
+        role: user.role,
+        isActive: user.isActive,
+        ...passwordFields,
+      },
+      create: {
+        name: user.name,
+        email,
+        role: user.role,
+        isActive: user.isActive,
+        passwordHash: await bcrypt.hash(initialPassword, 12),
+        mustChangePassword: true,
+      },
     });
   }
 
-  const activeCount = requesters.filter((r) => r.isActive).length;
-  console.log(`  ✓ ${activeCount} active, 1 inactive requester`);
+  const roleCounts = await prisma.user.groupBy({
+    by: ["role", "isActive"],
+    _count: { _all: true },
+    orderBy: [{ role: "asc" }, { isActive: "desc" }],
+  });
+  console.log("  ✓ Lab 3 user roles:", roleCounts);
 
   console.log("✅ Seeding finished.");
 }
