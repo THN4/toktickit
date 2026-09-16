@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useRequester } from "../contexts/RequesterContext";
 import { useAuth } from "../contexts/AuthContext";
 
 function roleLabel(role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR") {
@@ -10,22 +9,14 @@ function roleLabel(role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR") {
 }
 
 export default function NavBar() {
-  const { requester, clearRequester } = useRequester();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  function handleChangeRequester() {
-    clearRequester();
-    setMobileMenuOpen(false);
-    navigate("/select-requester");
-  }
 
   async function handleLogout() {
     try {
       await logout();
     } finally {
-      clearRequester();
       setMobileMenuOpen(false);
       navigate("/login");
     }
@@ -78,14 +69,6 @@ export default function NavBar() {
               <span className="text-green-100 text-sm">
                 👤 {user.name} · {roleLabel(user.role)}
               </span>
-              {user.role === "REQUESTER" && requester && (
-                <button
-                  onClick={handleChangeRequester}
-                  className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-md transition-colors font-medium cursor-pointer"
-                >
-                  Change Requester
-                </button>
-              )}
               <button onClick={() => void handleLogout()} className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-md transition-colors font-medium cursor-pointer">
                 Log out
               </button>
@@ -133,14 +116,6 @@ export default function NavBar() {
                 {user ? `${user.name} · ${roleLabel(user.role)}` : "No signed-in user"}
               </span>
             </div>
-            {user?.role === "REQUESTER" && requester && (
-              <button
-                onClick={handleChangeRequester}
-                className="text-xs bg-white text-[#006B3C] font-semibold px-3 py-1.5 rounded shadow-sm hover:bg-green-50 transition-colors cursor-pointer"
-              >
-                Change Requester
-              </button>
-            )}
           </div>
 
           <button onClick={() => void handleLogout()} className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-green-100 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">

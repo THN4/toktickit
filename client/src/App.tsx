@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { RequesterProvider, useRequester } from "./contexts/RequesterContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import NavBar from "./components/NavBar";
-import RequesterSelectionPage from "./pages/RequesterSelectionPage";
 import CreateTicketPage from "./pages/CreateTicketPage";
 import MyTicketsPage from "./pages/MyTicketsPage";
 import TicketDetailPage from "./pages/TicketDetailPage";
@@ -13,7 +11,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 function roleHome(role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR") {
   if (role === "IT_STAFF") return "/staff/tickets";
   if (role === "ADMINISTRATOR") return "/admin/users";
-  return "/select-requester";
+  return "/my-tickets";
 }
 
 function AuthLoading() {
@@ -43,11 +41,9 @@ function ChangePasswordOnly() {
   return <ChangePasswordPage />;
 }
 
-// ─── Guard: redirect to /select-requester if no requester selected (FR-14) ───
-
-function GuardedRoute({ children }: { children: React.ReactNode }) {
-  const { requester } = useRequester();
-  if (!requester) return <Navigate to="/select-requester" replace />;
+function RequesterRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (user?.role !== "REQUESTER") return <Navigate to={user ? roleHome(user.role) : "/login"} replace />;
   return <>{children}</>;
 }
 
@@ -62,24 +58,20 @@ function AppShell() {
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/my-tickets" replace />} />
 
-          {/* Requester selection — no guard needed */}
-          <Route path="/select-requester" element={<RequesterSelectionPage />} />
-
-          {/* Guarded routes */}
           <Route path="/my-tickets" element={
-            <GuardedRoute>
+            <RequesterRoute>
               <MyTicketsPage />
-            </GuardedRoute>
+            </RequesterRoute>
           } />
           <Route path="/create-ticket" element={
-            <GuardedRoute>
+            <RequesterRoute>
               <CreateTicketPage />
-            </GuardedRoute>
+            </RequesterRoute>
           } />
           <Route path="/tickets/:ticketNumber" element={
-            <GuardedRoute>
+            <RequesterRoute>
               <TicketDetailPage />
-            </GuardedRoute>
+            </RequesterRoute>
           } />
 
           <Route path="/staff/tickets" element={<PlaceholderPage title="IT Staff Queue" />} />
@@ -96,13 +88,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <RequesterProvider>
-          <Routes>
+        <Routes>
             <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
             <Route path="/change-password" element={<ChangePasswordOnly />} />
             <Route path="*" element={<RequireAppAccess><AppShell /></RequireAppAccess>} />
-          </Routes>
-        </RequesterProvider>
+        </Routes>
       </AuthProvider>
     </BrowserRouter>
   );
