@@ -47,7 +47,8 @@ function RequesterRoute({ children }: { children: React.ReactNode }) {
   if (user?.role !== "REQUESTER") return <Navigate to={user ? roleHome(user.role) : "/login"} replace />;
   return <>{children}</>;
 }
-function StaffRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'IT_STAFF' ? <>{children}</> : <Navigate to={user ? roleHome(user.role) : '/login'} replace />; }
+function Forbidden() { return <main className="max-w-xl mx-auto p-8 text-center"><h1 className="text-2xl font-bold text-[#1A2E22]">Forbidden</h1><p className="mt-2 text-[#4A6355]">You do not have permission to access this page.</p></main>; }
+function StaffRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'IT_STAFF' ? <>{children}</> : <Forbidden />; }
 
 // ─── App shell layout ─────────────────────────────────────────────────────────
 
