@@ -103,6 +103,7 @@ export interface Ticket {
   description: string;
   createdAt: string;
   updatedAt: string;
+  requesterResolvedAt?: string | null;
   category?: { id: number; name: string };
   relatedSystem?: { id: number; name: string };
 }
@@ -128,6 +129,37 @@ export interface TicketDetail extends Ticket {
   requester?: { id: number; name: string; email: string };
   ticketOwner?: { id: number; name: string; email: string } | null;
   attachments: Attachment[];
+}
+
+export type TicketPriority = "LOW" | "MEDIUM" | "HIGH";
+export type FormalStatus = "NEW" | "OPEN" | "IN_PROGRESS" | "WAITING_FOR_REQUESTER" | "RESOLVED" | "CLOSED" | "REOPENED" | "CANCELLED";
+
+export interface TicketAuthor {
+  id: number;
+  name: string;
+  role: UserRole;
+}
+
+export interface TicketComment {
+  id: number;
+  ticketId: number;
+  authorId: number;
+  content: string;
+  createdAt: string;
+  author: TicketAuthor;
+}
+
+export interface StaffOwner {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface StaffTicketDetail extends TicketDetail {
+  requester: StaffOwner;
+  ticketOwner: StaffOwner | null;
+  publicComments: TicketComment[];
+  internalNotes: TicketComment[];
 }
 
 export interface Pagination {
@@ -249,6 +281,61 @@ export async function fetchStaffQueue(params: StaffQueueParams): Promise<{ items
   const json = await res.json();
   if (!res.ok) throw new ApiError(json.error?.message || 'Unable to fetch the IT Staff Queue.', res.status, json.error?.code);
   return json.data;
+}
+
+async function ticketApiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}/api${path}`, {
+    ...init,
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  const json = await res.json();
+  if (!res.ok) throw new ApiError(json.error?.message || "Ticket request failed.", res.status, json.error?.code);
+  return json.data as T;
+}
+
+export function fetchStaffTicketDetail(ticketNumber: string): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}`);
+}
+
+export function fetchStaffOwners(): Promise<StaffOwner[]> {
+  return ticketApiRequest("/staff/owners");
+}
+
+export function claimStaffTicket(ticketNumber: string): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/claim`, { method: "POST" });
+}
+
+export function updateTicketOwner(ticketNumber: string, ownerId: number | null): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/owner`, { method: "PATCH", body: JSON.stringify({ ownerId }) });
+}
+
+export function updateItPriority(ticketNumber: string, itPriority: TicketPriority): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/it-priority`, { method: "PATCH", body: JSON.stringify({ itPriority }) });
+}
+
+export function updateFormalStatus(ticketNumber: string, status: FormalStatus, confirmed = false): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/status`, { method: "PATCH", body: JSON.stringify({ status, confirmed }) });
+}
+
+export function recordRequesterResolution(ticketNumber: string): Promise<{ ticketNumber: string; currentStatus: FormalStatus; requesterResolvedAt: string }> {
+  return ticketApiRequest(`/tickets/${encodeURIComponent(ticketNumber)}/requester-resolution`, { method: "POST" });
+}
+
+export function fetchPublicComments(ticketNumber: string): Promise<TicketComment[]> {
+  return ticketApiRequest(`/tickets/${encodeURIComponent(ticketNumber)}/comments`);
+}
+
+export function createPublicComment(ticketNumber: string, content: string): Promise<TicketComment> {
+  return ticketApiRequest(`/tickets/${encodeURIComponent(ticketNumber)}/comments`, { method: "POST", body: JSON.stringify({ content }) });
+}
+
+export function fetchInternalNotes(ticketNumber: string): Promise<TicketComment[]> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/notes`);
+}
+
+export function createInternalNote(ticketNumber: string, content: string): Promise<TicketComment> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/notes`, { method: "POST", body: JSON.stringify({ content }) });
 }
 
 // 5. ดึงรายละเอียดตั๋วรายใบ (Ticket Detail)
