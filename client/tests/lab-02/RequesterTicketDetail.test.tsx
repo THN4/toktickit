@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import TicketDetailPage from "../../src/pages/TicketDetailPage";
@@ -27,6 +27,7 @@ describe("UI-11: TicketDetail Component Tests (AC-16)", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(api, "fetchPublicComments").mockResolvedValue([]);
   });
 
   function renderComponent() {
@@ -58,9 +59,9 @@ describe("UI-11: TicketDetail Component Tests (AC-16)", () => {
     expect(screen.getByText("IN PROGRESS")).toBeInTheDocument();
 
     // Verify there are NO editable input fields in the metadata/header card
-    const inputs = screen.queryAllByRole("textbox");
-    // Only removalReason textarea inside the closed modal exists in DOM or none
-    expect(inputs.length).toBe(0);
+    const headerCard = screen.getByText("Ticket Number").closest(".bg-white");
+    expect(headerCard).not.toBeNull();
+    expect(within(headerCard as HTMLElement).queryAllByRole("textbox")).toHaveLength(0);
   });
 });
 
