@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import StaffQueuePage from "./pages/StaffQueuePage";
+import StaffTicketDetailPage from "./pages/StaffTicketDetailPage";
 
 function roleHome(role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR") {
   if (role === "IT_STAFF") return "/staff/tickets";
@@ -78,7 +79,7 @@ function AppShell() {
           } />
 
           <Route path="/staff/tickets" element={<StaffRoute><StaffQueuePage /></StaffRoute>} />
-          <Route path="/staff/tickets/:ticketNumber" element={<StaffRoute><PlaceholderPage title="IT Staff Ticket Detail" /></StaffRoute>} />
+          <Route path="/staff/tickets/:ticketNumber" element={<StaffRoute><StaffTicketDetailPage /></StaffRoute>} />
           <Route path="/admin/users" element={<PlaceholderPage title="User Management" />} />
         </Routes>
       </main>
