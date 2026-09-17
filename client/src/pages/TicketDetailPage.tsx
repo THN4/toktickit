@@ -4,9 +4,13 @@ import {
   fetchTicketDetail,
   uploadAttachment,
   deleteAttachment,
+  createPublicComment,
+  fetchPublicComments,
   getAttachmentDownloadUrl,
+  recordRequesterResolution,
   type TicketDetail,
   type Attachment,
+  type TicketComment,
 } from "../services/api";
 
 type LoadState = "loading" | "success" | "error";
@@ -30,6 +34,13 @@ export default function TicketDetailPage() {
   const [removalReason, setRemovalReason] = useState("");
   const [removalError, setRemovalError] = useState("");
   const [isRemoving, setIsRemoving] = useState(false);
+  const [comments, setComments] = useState<TicketComment[]>([]);
+  const [comment, setComment] = useState("");
+  const [commentError, setCommentError] = useState("");
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [resolutionConfirmationOpen, setResolutionConfirmationOpen] = useState(false);
+  const [resolutionError, setResolutionError] = useState("");
+  const [isRecordingResolution, setIsRecordingResolution] = useState(false);
 
   const loadDetail = useCallback(async () => {
     if (!ticketNumber) return;
@@ -37,8 +48,12 @@ export default function TicketDetailPage() {
     setErrorMessage("");
 
     try {
-      const data = await fetchTicketDetail(ticketNumber);
+      const [data, publicComments] = await Promise.all([
+        fetchTicketDetail(ticketNumber),
+        fetchPublicComments(ticketNumber),
+      ]);
       setTicket(data);
+      setComments(publicComments);
       setLoadState("success");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unable to load ticket.";
@@ -46,6 +61,39 @@ export default function TicketDetailPage() {
       setLoadState("error");
     }
   }, [ticketNumber]);
+
+  async function handlePostComment() {
+    if (!ticketNumber || !comment.trim()) {
+      setCommentError("A public comment cannot be empty.");
+      return;
+    }
+    setIsPostingComment(true);
+    setCommentError("");
+    try {
+      const created = await createPublicComment(ticketNumber, comment);
+      setComments((current) => [...current, created]);
+      setComment("");
+    } catch (err: unknown) {
+      setCommentError(err instanceof Error ? err.message : "Unable to post comment.");
+    } finally {
+      setIsPostingComment(false);
+    }
+  }
+
+  async function handleRecordResolution() {
+    if (!ticketNumber || !ticket) return;
+    setIsRecordingResolution(true);
+    setResolutionError("");
+    try {
+      const updated = await recordRequesterResolution(ticketNumber);
+      setTicket({ ...ticket, requesterResolvedAt: updated.requesterResolvedAt });
+      setResolutionConfirmationOpen(false);
+    } catch (err: unknown) {
+      setResolutionError(err instanceof Error ? err.message : "Unable to record the resolution indication.");
+    } finally {
+      setIsRecordingResolution(false);
+    }
+  }
 
   useEffect(() => {
     loadDetail();
@@ -228,6 +276,18 @@ export default function TicketDetailPage() {
             </div>
           </div>
 
+          {/* Requester resolution is an indication only; it never changes formal status. */}
+          <div className={`rounded-xl border p-4 ${ticket.requesterResolvedAt ? "border-[#A6D8B4] bg-[#ECFDF3]" : "border-[#D1E0D8] bg-white"}`}>
+            {ticket.requesterResolvedAt ? (
+              <p className="text-sm font-medium text-[#166534]">✓ You reported that the problem appears resolved on {new Date(ticket.requesterResolvedAt).toLocaleString()}. The formal ticket status remains {ticket.currentStatus.replaceAll("_", " ")}.</p>
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-[#294536]">If the issue appears fixed, let IT Staff know. This does not resolve or close the ticket.</p>
+                <button type="button" onClick={() => { setResolutionError(""); setResolutionConfirmationOpen(true); }} className="rounded-lg border border-[#006B3C] px-3 py-2 text-sm font-semibold text-[#006B3C] hover:bg-[#EAF6EF]">Problem appears resolved</button>
+              </div>
+            )}
+          </div>
+
           {/* Ticket Content Card */}
           <div className="bg-white rounded-xl border border-[#D1E0D8] p-6 shadow-sm space-y-4">
             <div>
@@ -241,6 +301,36 @@ export default function TicketDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* ─── Public Comments ──────────────────────────────────────────── */}
+          <section className="bg-white rounded-xl border border-[#D1E0D8] p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-[#1A2E22]">Public Comments</h2>
+            <p className="mt-1 text-xs text-[#4A6355]">Visible to you, IT Staff, and Administrators.</p>
+            <textarea
+              aria-label="Public comment"
+              value={comment}
+              onChange={(event) => { setComment(event.target.value); if (commentError) setCommentError(""); }}
+              maxLength={2000}
+              rows={4}
+              placeholder="Add a message for IT Staff…"
+              className="mt-4 w-full rounded-lg border border-[#D1E0D8] p-3 text-sm text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#006B3C]"
+            />
+            <div className="mt-1 flex items-start justify-between gap-3 text-xs text-[#4A6355]">
+              <span>{commentError && <strong className="text-red-600">{commentError}</strong>}</span>
+              <span>{comment.length}/2000</span>
+            </div>
+            <button type="button" onClick={() => void handlePostComment()} disabled={isPostingComment || !comment.trim()} className="mt-3 rounded-lg bg-[#006B3C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+              {isPostingComment ? "Posting…" : "Post comment"}
+            </button>
+            <div className="mt-5 space-y-3">
+              {comments.length === 0 ? <p className="rounded-lg bg-[#F0F4F1] p-3 text-sm text-[#4A6355]">No public comments yet.</p> : comments.map((entry) => (
+                <article key={entry.id} className="rounded-lg border border-[#D1E0D8] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="font-semibold text-[#1A2E22]">{entry.author.name} · {entry.author.role.replace("_", " ")}</span><time className="text-[#4A6355]">{new Date(entry.createdAt).toLocaleString()}</time></div>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-[#294536]">{entry.content}</p>
+                </article>
+              ))}
+            </div>
+          </section>
 
           {/* ─── Attachment Section ─────────────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-[#D1E0D8] p-6 shadow-sm space-y-6">
@@ -367,6 +457,20 @@ export default function TicketDetailPage() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {resolutionConfirmationOpen && ticket && (
+        <div role="dialog" aria-modal="true" aria-labelledby="resolution-confirmation-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 id="resolution-confirmation-title" className="text-lg font-bold text-[#1A2E22]">Confirm resolution indication</h2>
+            <p className="mt-2 text-sm text-[#4A6355]">Record that {ticket.ticketNumber} appears resolved? This will notify IT Staff but will not change the formal status or close the ticket.</p>
+            {resolutionError && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{resolutionError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" disabled={isRecordingResolution} onClick={() => setResolutionConfirmationOpen(false)} className="rounded-lg border border-[#D1E0D8] px-3 py-2 text-sm font-semibold">Cancel</button>
+              <button type="button" disabled={isRecordingResolution} onClick={() => void handleRecordResolution()} className="rounded-lg bg-[#006B3C] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{isRecordingResolution ? "Saving…" : "Confirm"}</button>
+            </div>
           </div>
         </div>
       )}

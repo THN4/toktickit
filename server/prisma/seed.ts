@@ -120,6 +120,70 @@ async function main() {
   });
   console.log("  ✓ Lab 3 user roles:", roleCounts);
 
+  // ── Ticket workflow fixtures (spec Section 7.4) ──────────────────────────
+  // `upsert` preserves a developer's later edits while making a fresh database
+  // immediately useful for Queue, Detail, assignment, and collaboration flows.
+  const seededUsers = await prisma.user.findMany({
+    where: { email: { in: users.map((user) => user.email) } },
+    select: { id: true, email: true },
+  });
+  const userId = new Map(seededUsers.map((user) => [user.email, user.id]));
+  const seededCategories = await prisma.category.findMany({ select: { id: true, name: true } });
+  const categoryId = new Map(seededCategories.map((category) => [category.name, category.id]));
+  const seededSystems = await prisma.relatedSystem.findMany({ select: { id: true, name: true } });
+  const systemId = new Map(seededSystems.map((system) => [system.name, system.id]));
+  const requester = (email: string) => userId.get(email)!;
+  const owner = (email: string | null) => email ? userId.get(email)! : null;
+
+  const tickets = [
+    { ticketNumber: "TKT-L3-000001", requesterEmail: "jennifer.anderson@example.com", ownerEmail: null, category: "Network", system: "Campus Wi-Fi", summary: "Cannot connect to campus Wi-Fi", description: "Connection is rejected after sign-in on the main campus network.", requestedPriority: "HIGH" as const, itPriority: "HIGH" as const, currentStatus: "NEW" as const, requesterResolvedAt: null },
+    { ticketNumber: "TKT-L3-000002", requesterEmail: "michael.brown@example.com", ownerEmail: "nina.patel@example.com", category: "Software", system: "LEB2 App", summary: "LEB2 app opens to a blank screen", description: "The dashboard remains blank after a successful login.", requestedPriority: "MEDIUM" as const, itPriority: "HIGH" as const, currentStatus: "OPEN" as const, requesterResolvedAt: null },
+    { ticketNumber: "TKT-L3-000003", requesterEmail: "sarah.johnson@example.com", ownerEmail: "owen.garcia@example.com", category: "Hardware", system: "Corporate Laptop", summary: "Laptop battery drains while sleeping", description: "Battery falls from full charge to empty overnight in sleep mode.", requestedPriority: "MEDIUM" as const, itPriority: "MEDIUM" as const, currentStatus: "IN_PROGRESS" as const, requesterResolvedAt: null },
+    { ticketNumber: "TKT-L3-000004", requesterEmail: "david.lee@example.com", ownerEmail: "priya.shah@example.com", category: "Account and Access", system: "VPN", summary: "VPN access needs requester information", description: "Additional connection details are needed before troubleshooting can continue.", requestedPriority: "HIGH" as const, itPriority: "HIGH" as const, currentStatus: "WAITING_FOR_REQUESTER" as const, requesterResolvedAt: null },
+    { ticketNumber: "TKT-L3-000005", requesterEmail: "jennifer.anderson@example.com", ownerEmail: "nina.patel@example.com", category: "Software", system: "Email", summary: "Mailbox sync issue appears fixed", description: "The requester can now receive new messages after diagnostics.", requestedPriority: "LOW" as const, itPriority: "MEDIUM" as const, currentStatus: "RESOLVED" as const, requesterResolvedAt: new Date("2026-09-01T09:00:00.000Z") },
+    { ticketNumber: "TKT-L3-000006", requesterEmail: "michael.brown@example.com", ownerEmail: "owen.garcia@example.com", category: "Hardware", system: "Printer", summary: "Printer replacement request completed", description: "The replacement printer is installed and verified.", requestedPriority: "LOW" as const, itPriority: "LOW" as const, currentStatus: "CLOSED" as const, requesterResolvedAt: null },
+    { ticketNumber: "TKT-L3-000007", requesterEmail: "sarah.johnson@example.com", ownerEmail: "priya.shah@example.com", category: "Account and Access", system: "Grade Submission App", summary: "Grade submission access regressed", description: "The previous access fix no longer works for the requester.", requestedPriority: "HIGH" as const, itPriority: "HIGH" as const, currentStatus: "REOPENED" as const, requesterResolvedAt: null },
+    { ticketNumber: "TKT-L3-000008", requesterEmail: "david.lee@example.com", ownerEmail: null, category: "Network", system: "VPN", summary: "Duplicate VPN request cancelled", description: "This request duplicates another active VPN ticket.", requestedPriority: "LOW" as const, itPriority: "LOW" as const, currentStatus: "CANCELLED" as const, requesterResolvedAt: null },
+  ];
+
+  for (const ticket of tickets) {
+    await prisma.ticket.upsert({
+      where: { ticketNumber: ticket.ticketNumber },
+      update: {},
+      create: {
+        ticketNumber: ticket.ticketNumber,
+        requesterId: requester(ticket.requesterEmail),
+        ticketOwnerId: owner(ticket.ownerEmail),
+        categoryId: categoryId.get(ticket.category)!,
+        relatedSystemId: systemId.get(ticket.system)!,
+        summary: ticket.summary,
+        description: ticket.description,
+        requestedPriority: ticket.requestedPriority,
+        itPriority: ticket.itPriority,
+        currentStatus: ticket.currentStatus,
+        requesterResolvedAt: ticket.requesterResolvedAt,
+      },
+    });
+  }
+
+  const seededTickets = await prisma.ticket.findMany({ where: { ticketNumber: { in: tickets.map((ticket) => ticket.ticketNumber) } }, select: { id: true, ticketNumber: true } });
+  const ticketId = new Map(seededTickets.map((ticket) => [ticket.ticketNumber, ticket.id]));
+  const collaborationFixtures = [
+    { kind: "comment", ticketNumber: "TKT-L3-000002", authorEmail: "michael.brown@example.com", content: "The blank screen happens in both Chrome and Firefox." },
+    { kind: "comment", ticketNumber: "TKT-L3-000002", authorEmail: "nina.patel@example.com", content: "Thanks — I am checking the application logs now." },
+    { kind: "note", ticketNumber: "TKT-L3-000003", authorEmail: "owen.garcia@example.com", content: "Battery report requested from the device-management console." },
+    { kind: "note", ticketNumber: "TKT-L3-000007", authorEmail: "priya.shah@example.com", content: "Reopened after the prior access group change was rolled back." },
+  ];
+  for (const fixture of collaborationFixtures) {
+    const where = { ticketId: ticketId.get(fixture.ticketNumber)!, authorId: userId.get(fixture.authorEmail)!, content: fixture.content };
+    if (fixture.kind === "comment") {
+      if (!await prisma.publicComment.findFirst({ where })) await prisma.publicComment.create({ data: where });
+    } else if (!await prisma.internalNote.findFirst({ where })) {
+      await prisma.internalNote.create({ data: where });
+    }
+  }
+  console.log(`  ✓ ${tickets.length} workflow tickets and ${collaborationFixtures.length} collaboration fixtures`);
+
   console.log("✅ Seeding finished.");
 }
 

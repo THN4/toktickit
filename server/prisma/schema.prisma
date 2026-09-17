@@ -22,8 +22,11 @@ enum TicketStatus {
   NEW
   OPEN
   IN_PROGRESS
+  WAITING_FOR_REQUESTER
   RESOLVED
   CLOSED
+  REOPENED
+  CANCELLED
 }
 
 enum UserRole {
@@ -51,7 +54,11 @@ model User {
   ownedTickets        Ticket[]     @relation("TicketOwner")
   uploadedAttachments Attachment[] @relation("AttachmentUploader")
   removedAttachments  Attachment[] @relation("AttachmentRemover")
+  publicComments      PublicComment[]
+  internalNotes       InternalNote[]
   sessions            Session[]
+
+  @@index([role, isActive])
 }
 
 // ─── Server-side Session ────────────────────────────────────────────────────
@@ -110,6 +117,7 @@ model Ticket {
   requestedPriority Priority     @default(MEDIUM)
   itPriority        Priority     @default(MEDIUM)
   currentStatus     TicketStatus @default(NEW)
+  requesterResolvedAt DateTime?
 
   ticketOwnerId Int?
   ticketOwner   User? @relation("TicketOwner", fields: [ticketOwnerId], references: [id])
@@ -118,11 +126,15 @@ model Ticket {
   updatedAt DateTime @updatedAt
 
   attachments Attachment[]
+  publicComments PublicComment[]
+  internalNotes  InternalNote[]
 
   @@index([requesterId])
   @@index([currentStatus, categoryId, requestedPriority])
   @@index([createdAt])
   @@index([updatedAt])
+  @@index([ticketOwnerId])
+  @@index([currentStatus, updatedAt])
 }
 
 // ─── Attachment ───────────────────────────────────────────────────────────────
@@ -149,4 +161,32 @@ model Attachment {
   createdAt DateTime @default(now())
 
   @@index([ticketId])
+}
+
+// ─── Lab 3 Ticket collaboration ────────────────────────────────────────────
+
+model PublicComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
 }

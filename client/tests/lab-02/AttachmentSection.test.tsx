@@ -23,6 +23,7 @@ describe("UI-02, UI-03, UI-12, UI-13: Attachment Section Tests", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(api, "fetchPublicComments").mockResolvedValue([]);
   });
 
   function renderComponent() {
