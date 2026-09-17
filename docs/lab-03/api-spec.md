@@ -73,6 +73,7 @@ All operations in this section require `IT_STAFF`.
 | Method | Path | Request / query | Result |
 |---|---|---|---|
 | GET | `/staff/tickets` | `search,status,requestedPriority,itPriority,ownerState,ownerId,sort,order,page,pageSize` | Queue page + metadata |
+| GET | `/staff/owners` | — | Active IT Staff users for the owner-select control |
 | GET | `/staff/tickets/:ticketNumber` | — | Ticket detail, comments, permitted notes |
 | POST | `/staff/tickets/:ticketNumber/claim` | — | Set current User as owner |
 | PATCH | `/staff/tickets/:ticketNumber/owner` | `{ ownerId }` | Assign/reassign active permitted owner |
@@ -89,6 +90,11 @@ Permitted `sort` values are `updatedAt`, `createdAt`, `ticketNumber`,
 `currentStatus`, `requestedPriority`, and `itPriority`; permitted page sizes are
 10, 25, 50. Invalid parameters return 400. Default order is `updatedAt DESC,
 ticketNumber DESC`.
+
+`ownerId` must reference an active `IT_STAFF` User; `{ "ownerId": null }`
+returns a Ticket to the unassigned state. The Status endpoint accepts only the
+BR-12 transition matrix. `confirmed: true` is required for `RESOLVED`,
+`CLOSED`, and `CANCELLED`.
 
 ## 5. Comments and Notes
 

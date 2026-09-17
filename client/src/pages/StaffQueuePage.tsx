@@ -5,7 +5,7 @@ import { fetchStaffQueue, type StaffQueueItem, type StaffQueueParams } from "../
 type SortField = NonNullable<StaffQueueParams["sort"]>;
 type SortOrder = NonNullable<StaffQueueParams["order"]>;
 
-const statuses = ["", "NEW", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+const statuses = ["", "NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "REOPENED", "CANCELLED"];
 const priorities = ["", "LOW", "MEDIUM", "HIGH"];
 
 function Select({
