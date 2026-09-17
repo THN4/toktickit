@@ -16,15 +16,15 @@ criterion in `specification.md` maps to at least one planned test.
 | API-04 | API | AC-04 | Logout invalidates session | `server/tests/lab-03/auth.api.test.ts` | Implemented — database verification pending |
 | API-05 | Security | AC-05, BR-07 | Requester cannot select another requester ID | `server/tests/lab-03/authorization.api.test.ts` | Implemented — database verification pending |
 | API-06 | Regression | AC-06 | Owned Lab 2 Ticket/Attachment flows remain available | `server/tests/lab-03/requester-regression.api.test.ts` | Pass (3 tests) |
-| API-07 | API | AC-07, BR-22–23 | Queue search/filter/sort/pagination metadata | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
-| API-08 | API | AC-08 | Invalid Queue query is 400 | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
+| API-07 | API | AC-07, BR-22–23 | Queue search/filter/sort/pagination metadata | `server/tests/lab-03/staff-queue.api.test.ts` | Pass (2 tests) |
+| API-08 | API | AC-08 | Invalid Queue query is 400 | `server/tests/lab-03/staff-queue.api.test.ts` | Pass (2 tests) |
 | API-09 | API | AC-09–11 | Claim/assignment/priority/status workflow validation | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
 | API-10 | API | AC-12–14 | Public Comments and protected Internal Notes | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | API-11 | API | AC-15–19 | User admin, duplicate email, password reset, admin safety | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | MIG-01 | Migration | AC-20 | Lab 2 users/tickets/attachments retain ownership | `server/tests/lab-03/migration.regression.test.ts` | Planned |
 | UI-01 | UI | AC-01–03 | Login and Change Password validation/states | `client/tests/lab-03/Authentication.test.tsx` | Pass (3 tests) |
 | UI-05 | UI security | AC-04–05, AC-19 | Unauthenticated route redirect and Requester-only route guard | `client/src/App.test.tsx` | Pass (1 test) |
-| UI-02 | UI | AC-07–08 | Queue states, controls, and no-results | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
+| UI-02 | UI | AC-07–08 | Queue states, controls, and no-results | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass (2 tests) |
 | UI-03 | UI | AC-09–14 | Detail controls, comments, internal-note restriction | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | UI-04 | UI | AC-15–19 | User list/form and safety feedback | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
 | E2E-01 | E2E | AC-01–04 | Login, change password, logout, blocked direct access | `e2e/lab-03/authentication.spec.ts` | Planned |
