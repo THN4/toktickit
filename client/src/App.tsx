@@ -7,6 +7,7 @@ import TicketDetailPage from "./pages/TicketDetailPage";
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import StaffQueuePage from "./pages/StaffQueuePage";
 
 function roleHome(role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR") {
   if (role === "IT_STAFF") return "/staff/tickets";
@@ -46,6 +47,8 @@ function RequesterRoute({ children }: { children: React.ReactNode }) {
   if (user?.role !== "REQUESTER") return <Navigate to={user ? roleHome(user.role) : "/login"} replace />;
   return <>{children}</>;
 }
+function Forbidden() { return <main className="max-w-xl mx-auto p-8 text-center"><h1 className="text-2xl font-bold text-[#1A2E22]">Forbidden</h1><p className="mt-2 text-[#4A6355]">You do not have permission to access this page.</p></main>; }
+function StaffRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'IT_STAFF' ? <>{children}</> : <Forbidden />; }
 
 // ─── App shell layout ─────────────────────────────────────────────────────────
 
@@ -74,7 +77,8 @@ function AppShell() {
             </RequesterRoute>
           } />
 
-          <Route path="/staff/tickets" element={<PlaceholderPage title="IT Staff Queue" />} />
+          <Route path="/staff/tickets" element={<StaffRoute><StaffQueuePage /></StaffRoute>} />
+          <Route path="/staff/tickets/:ticketNumber" element={<StaffRoute><PlaceholderPage title="IT Staff Ticket Detail" /></StaffRoute>} />
           <Route path="/admin/users" element={<PlaceholderPage title="User Management" />} />
         </Routes>
       </main>

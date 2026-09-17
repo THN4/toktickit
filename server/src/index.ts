@@ -143,6 +143,14 @@ function requireRequester(req: AuthenticatedRequest, res: Response, next: NextFu
   next();
 }
 
+function requireITStaff(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const user = req.auth?.user;
+  if (!user) return res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' } });
+  if (user.mustChangePassword) return res.status(403).json({ success: false, error: { code: 'PASSWORD_CHANGE_REQUIRED', message: 'A password change is required.' } });
+  if (user.role !== 'IT_STAFF') return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'IT Staff access is required.' } });
+  next();
+}
+
 function hasClientSuppliedRequesterId(req: Request): boolean {
   return Object.prototype.hasOwnProperty.call(req.query ?? {}, 'requesterId')
     || Object.prototype.hasOwnProperty.call(req.body ?? {}, 'requesterId');
@@ -561,6 +569,44 @@ app.get('/api/tickets', requireAuthentication, requireRequester, async (req: Aut
       success: false,
       error: { code: 'SERVER_ERROR', message: 'Unable to fetch tickets.' },
     });
+  }
+});
+
+// ─── GET /api/staff/tickets — IT Staff Queue ────────────────────────────────
+app.get('/api/staff/tickets', requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+  const { search, status, requestedPriority, itPriority, ownerState, ownerId, sort = 'updatedAt', order = 'desc', page = '1', pageSize = '10' } = req.query;
+  const priorities = ['LOW', 'MEDIUM', 'HIGH'];
+  const statuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+  const sortFields = ['updatedAt', 'createdAt', 'ticketNumber', 'currentStatus', 'requestedPriority', 'itPriority'];
+  const pageNum = Number(page);
+  const sizeNum = Number(pageSize);
+  if (!Number.isInteger(pageNum) || pageNum < 1 || ![10, 25, 50].includes(sizeNum) || !sortFields.includes(String(sort)) || !['asc', 'desc'].includes(String(order).toLowerCase()) || (status && !statuses.includes(String(status))) || (requestedPriority && !priorities.includes(String(requestedPriority))) || (itPriority && !priorities.includes(String(itPriority))) || (ownerState && !['assigned', 'unassigned'].includes(String(ownerState))) || (ownerId && (!Number.isInteger(Number(ownerId)) || Number(ownerId) < 1))) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid Queue query parameters.' } });
+  }
+  const where: any = {};
+  if (status) where.currentStatus = status;
+  if (requestedPriority) where.requestedPriority = requestedPriority;
+  if (itPriority) where.itPriority = itPriority;
+  if (ownerState === 'assigned') where.ticketOwnerId = { not: null };
+  if (ownerState === 'unassigned') where.ticketOwnerId = null;
+  if (ownerId) where.ticketOwnerId = Number(ownerId);
+  if (typeof search === 'string' && search.trim()) {
+    const term = search.trim();
+    where.OR = [
+      { ticketNumber: { contains: term, mode: 'insensitive' } },
+      { summary: { contains: term, mode: 'insensitive' } },
+      { requester: { is: { OR: [{ name: { contains: term, mode: 'insensitive' } }, { email: { contains: term, mode: 'insensitive' } }] } } },
+      { ticketOwner: { is: { OR: [{ name: { contains: term, mode: 'insensitive' } }, { email: { contains: term, mode: 'insensitive' } }] } } },
+    ];
+  }
+  try {
+    const [totalItems, items] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({ where, orderBy: [{ [String(sort)]: String(order).toLowerCase() }, { ticketNumber: 'desc' }], skip: (pageNum - 1) * sizeNum, take: sizeNum, include: { requester: { select: { id: true, name: true, email: true } }, ticketOwner: { select: { id: true, name: true, email: true } }, category: { select: { id: true, name: true } }, relatedSystem: { select: { id: true, name: true } } } }),
+    ]);
+    return res.status(200).json({ success: true, data: { items, pagination: { page: pageNum, pageSize: sizeNum, totalItems, totalPages: Math.ceil(totalItems / sizeNum) } } });
+  } catch {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to fetch the IT Staff Queue.' } });
   }
 });
 

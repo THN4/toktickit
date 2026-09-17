@@ -142,6 +142,16 @@ export interface GetTicketsResponse {
   pagination: Pagination;
 }
 
+export interface StaffQueueItem extends Ticket {
+  requester: { id: number; name: string; email: string };
+  ticketOwner: { id: number; name: string; email: string } | null;
+}
+
+export interface StaffQueueParams {
+  search?: string; status?: string; requestedPriority?: string; itPriority?: string;
+  ownerState?: 'assigned' | 'unassigned'; ownerId?: number; sort?: string; order?: 'asc' | 'desc'; page?: number; pageSize?: number;
+}
+
 export interface GetTicketsParams {
   search?: string;
   category?: string;
@@ -230,6 +240,15 @@ export async function fetchTickets(params: GetTicketsParams): Promise<GetTickets
   }
 
   return json.data as GetTicketsResponse;
+}
+
+export async function fetchStaffQueue(params: StaffQueueParams): Promise<{ items: StaffQueueItem[]; pagination: Pagination }> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== '') query.set(key, String(value));
+  const res = await fetch(`${BASE_URL}/api/staff/tickets?${query}`, { credentials: 'include' });
+  const json = await res.json();
+  if (!res.ok) throw new ApiError(json.error?.message || 'Unable to fetch the IT Staff Queue.', res.status, json.error?.code);
+  return json.data;
 }
 
 // 5. ดึงรายละเอียดตั๋วรายใบ (Ticket Detail)
