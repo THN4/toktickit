@@ -113,5 +113,8 @@ describe("Lab 3 Staff Queue UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(api.fetchStaffQueue).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
     expect(screen.getByText("Showing 11 to 20 of 20")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Page size"), { target: { value: "25" } });
+    await waitFor(() => expect(api.fetchStaffQueue).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 25 })));
   });
 });

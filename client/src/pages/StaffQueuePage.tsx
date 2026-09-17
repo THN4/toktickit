@@ -166,7 +166,7 @@ export default function StaffQueuePage() {
 
   const renderTicket = (ticket: StaffQueueItem) => (
     <article key={ticket.id} className="rounded-xl border border-[#D1E0D8] bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <Link to={`/staff/tickets/${ticket.ticketNumber}`} className="font-mono text-sm font-bold text-[#006B3C] underline-offset-2 hover:underline">
             {ticket.ticketNumber}
