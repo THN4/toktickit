@@ -10,7 +10,8 @@ import { app } from '../../src/index.js';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 let staffSession = ''; let requesterSession = ''; let ticketId = 0;
-const staffEmail = 'queue-staff@example.test'; const requesterEmail = 'queue-requester@example.test';
+const fixture = randomBytes(8).toString('hex');
+const staffEmail = `queue-staff-${fixture}@example.test`; const requesterEmail = `queue-requester-${fixture}@example.test`;
 const cookie = (session: string) => `toktickit_session=${session}`;
 
 beforeAll(async () => {
