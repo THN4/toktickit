@@ -6,7 +6,7 @@ import MyTicketsPage from "./pages/MyTicketsPage";
 import TicketDetailPage from "./pages/TicketDetailPage";
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 import StaffQueuePage from "./pages/StaffQueuePage";
 import StaffTicketDetailPage from "./pages/StaffTicketDetailPage";
 
@@ -50,6 +50,7 @@ function RequesterRoute({ children }: { children: React.ReactNode }) {
 }
 function Forbidden() { return <main className="max-w-xl mx-auto p-8 text-center"><h1 className="text-2xl font-bold text-[#1A2E22]">Forbidden</h1><p className="mt-2 text-[#4A6355]">You do not have permission to access this page.</p></main>; }
 function StaffRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'IT_STAFF' ? <>{children}</> : <Forbidden />; }
+function AdminRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'ADMINISTRATOR' ? <>{children}</> : <Forbidden />; }
 
 // ─── App shell layout ─────────────────────────────────────────────────────────
 
@@ -80,7 +81,7 @@ function AppShell() {
 
           <Route path="/staff/tickets" element={<StaffRoute><StaffQueuePage /></StaffRoute>} />
           <Route path="/staff/tickets/:ticketNumber" element={<StaffRoute><StaffTicketDetailPage /></StaffRoute>} />
-          <Route path="/admin/users" element={<PlaceholderPage title="User Management" />} />
+          <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
         </Routes>
       </main>
     </div>
