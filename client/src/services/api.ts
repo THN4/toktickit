@@ -196,6 +196,20 @@ export interface GetTicketsParams {
   pageSize?: number;
 }
 
+export interface AdminUserInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+}
+
+export interface CreateAdminUserInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  initialPassword: string;
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 // 1. ดึง Categories สำหรับใส่ใน Dropdown
 export async function fetchCategories(): Promise<Category[]> {
@@ -336,6 +350,25 @@ export function fetchInternalNotes(ticketNumber: string): Promise<TicketComment[
 
 export function createInternalNote(ticketNumber: string, content: string): Promise<TicketComment> {
   return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/notes`, { method: "POST", body: JSON.stringify({ content }) });
+}
+
+export function fetchAdminUsers(params: { search?: string; role?: UserRole | "" } = {}): Promise<{ users: AuthUser[] }> {
+  const query = new URLSearchParams();
+  if (params.search?.trim()) query.set("search", params.search.trim());
+  if (params.role) query.set("role", params.role);
+  return ticketApiRequest(`/admin/users${query.toString() ? `?${query.toString()}` : ""}`);
+}
+
+export function createAdminUser(input: CreateAdminUserInput): Promise<{ user: AuthUser }> {
+  return ticketApiRequest("/admin/users", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateAdminUser(id: number, input: AdminUserInput): Promise<{ user: AuthUser }> {
+  return ticketApiRequest(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function resetAdminUserPassword(id: number, initialPassword: string): Promise<{ user: AuthUser }> {
+  return ticketApiRequest(`/admin/users/${id}/initial-password`, { method: "POST", body: JSON.stringify({ initialPassword }) });
 }
 
 // 5. ดึงรายละเอียดตั๋วรายใบ (Ticket Detail)
