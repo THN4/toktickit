@@ -161,6 +161,14 @@ function requireStaffOrAdministrator(req: AuthenticatedRequest, res: Response, n
   next();
 }
 
+function requireAdministrator(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const user = req.auth?.user;
+  if (!user) return res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' } });
+  if (user.mustChangePassword) return res.status(403).json({ success: false, error: { code: 'PASSWORD_CHANGE_REQUIRED', message: 'A password change is required.' } });
+  if (user.role !== 'ADMINISTRATOR') return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Administrator access is required.' } });
+  next();
+}
+
 function requiresPasswordChangeBlock(req: AuthenticatedRequest, res: Response): boolean {
   if (!req.auth?.user.mustChangePassword) return false;
   res.status(403).json({ success: false, error: { code: 'PASSWORD_CHANGE_REQUIRED', message: 'A password change is required.' } });
@@ -304,6 +312,105 @@ app.post('/api/auth/change-password', requireTrustedOrigin, requireAuthenticatio
       success: false,
       error: { code: 'SERVER_ERROR', message: 'Unable to change password.' },
     });
+  }
+});
+
+// ─── Administrator User Management ─────────────────────────────────────────
+
+const adminRoles = ['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR'] as const;
+
+function isAdminRole(value: unknown): value is SafeUser['role'] {
+  return typeof value === 'string' && adminRoles.includes(value as typeof adminRoles[number]);
+}
+
+function validInitialPassword(value: unknown): value is string {
+  return typeof value === 'string' && value.length >= PASSWORD_MIN_LENGTH && value.length <= 128;
+}
+
+function normalizedEmail(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const email = value.trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
+async function findDuplicateEmail(email: string, exceptId?: number) {
+  return prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' }, ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { id: true } });
+}
+
+app.get('/api/admin/users', requireAuthentication, requireAdministrator, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const search = req.query.search;
+    const role = req.query.role;
+    if (search !== undefined && typeof search !== 'string') return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'search must be a string.' } });
+    if (role !== undefined && !isAdminRole(role)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'role is invalid.' } });
+    const term = typeof search === 'string' ? search.trim() : '';
+    const users = await prisma.user.findMany({
+      where: {
+        ...(role ? { role: role as any } : {}),
+        ...(term ? { OR: [{ name: { contains: term, mode: 'insensitive' } }, { email: { contains: term, mode: 'insensitive' } }] } : {}),
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      select: safeUserSelect,
+    });
+    return res.status(200).json({ success: true, data: { users } });
+  } catch {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to fetch users.' } });
+  }
+});
+
+app.post('/api/admin/users', requireTrustedOrigin, requireAuthentication, requireAdministrator, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, email, role, initialPassword } = req.body ?? {};
+    const normalized = normalizedEmail(email);
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 120 || !normalized || !isAdminRole(role) || !validInitialPassword(initialPassword)) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Name, email, role, and a 12–128 character initial password are required.' } });
+    }
+    if (await findDuplicateEmail(normalized)) return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    const passwordHash = await bcrypt.hash(initialPassword, 12);
+    const user = await prisma.user.create({ data: { name: name.trim(), email: normalized, role: role as any, isActive: true, passwordHash, mustChangePassword: true }, select: safeUserSelect });
+    return res.status(201).json({ success: true, data: { user } });
+  } catch (error: any) {
+    if (error?.code === 'P2002') return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to create User.' } });
+  }
+});
+
+app.patch('/api/admin/users/:id', requireTrustedOrigin, requireAuthentication, requireAdministrator, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { name, email, role, isActive } = req.body ?? {};
+    if (!Number.isInteger(id) || id < 1 || typeof name !== 'string' || !name.trim() || name.trim().length > 120 || !normalizedEmail(email) || !isAdminRole(role) || typeof isActive !== 'boolean') {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Name, email, role, and activation state are required.' } });
+    }
+    const normalized = normalizedEmail(email)!;
+    const current = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, isActive: true } });
+    if (!current) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found.' } });
+    if (id === req.auth!.user.id && !isActive) return res.status(409).json({ success: false, error: { code: 'SELF_DEACTIVATION', message: 'You cannot deactivate your own Administrator account.' } });
+    if (await findDuplicateEmail(normalized, id)) return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    const removesActiveAdministrator = current.role === 'ADMINISTRATOR' && current.isActive && (role !== 'ADMINISTRATOR' || !isActive);
+    if (removesActiveAdministrator && await prisma.user.count({ where: { role: 'ADMINISTRATOR', isActive: true } }) <= 1) {
+      return res.status(409).json({ success: false, error: { code: 'LAST_ACTIVE_ADMINISTRATOR', message: 'At least one active Administrator must remain.' } });
+    }
+    const user = await prisma.user.update({ where: { id }, data: { name: name.trim(), email: normalized, role: role as any, isActive }, select: safeUserSelect });
+    return res.status(200).json({ success: true, data: { user } });
+  } catch (error: any) {
+    if (error?.code === 'P2002') return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to update User.' } });
+  }
+});
+
+app.post('/api/admin/users/:id/initial-password', requireTrustedOrigin, requireAuthentication, requireAdministrator, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const initialPassword = req.body?.initialPassword;
+    if (!Number.isInteger(id) || id < 1 || !validInitialPassword(initialPassword)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'initialPassword must be 12–128 characters.' } });
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!target) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found.' } });
+    const passwordHash = await bcrypt.hash(initialPassword, 12);
+    const user = await prisma.user.update({ where: { id }, data: { passwordHash, mustChangePassword: true }, select: safeUserSelect });
+    return res.status(200).json({ success: true, data: { user } });
+  } catch {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to reset initial password.' } });
   }
 });
 
