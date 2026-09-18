@@ -362,15 +362,16 @@ app.post('/api/admin/users', requireTrustedOrigin, requireAuthentication, requir
   try {
     const { name, email, role, initialPassword } = req.body ?? {};
     const normalized = normalizedEmail(email);
-    if (typeof name !== 'string' || !name.trim() || name.trim().length > 120 || !normalized || !isAdminRole(role) || !validInitialPassword(initialPassword)) {
-      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Name, email, role, and a 12–128 character initial password are required.' } });
-    }
-    if (await findDuplicateEmail(normalized)) return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 120) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'name', message: 'Name is required and must be at most 120 characters.' } });
+    if (!normalized) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'email', message: 'Please enter a valid email address.' } });
+    if (!isAdminRole(role)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'role', message: 'Please select a valid role.' } });
+    if (!validInitialPassword(initialPassword)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'initialPassword', message: 'Initial password must be 12–128 characters.' } });
+    if (await findDuplicateEmail(normalized)) return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', field: 'email', message: 'A User with this email already exists.' } });
     const passwordHash = await bcrypt.hash(initialPassword, 12);
     const user = await prisma.user.create({ data: { name: name.trim(), email: normalized, role: role as any, isActive: true, passwordHash, mustChangePassword: true }, select: safeUserSelect });
     return res.status(201).json({ success: true, data: { user } });
   } catch (error: any) {
-    if (error?.code === 'P2002') return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    if (error?.code === 'P2002') return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', field: 'email', message: 'A User with this email already exists.' } });
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to create User.' } });
   }
 });
@@ -379,14 +380,16 @@ app.patch('/api/admin/users/:id', requireTrustedOrigin, requireAuthentication, r
   try {
     const id = Number(req.params.id);
     const { name, email, role, isActive } = req.body ?? {};
-    if (!Number.isInteger(id) || id < 1 || typeof name !== 'string' || !name.trim() || name.trim().length > 120 || !normalizedEmail(email) || !isAdminRole(role) || typeof isActive !== 'boolean') {
-      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Name, email, role, and activation state are required.' } });
-    }
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'User id is invalid.' } });
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 120) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'name', message: 'Name is required and must be at most 120 characters.' } });
+    if (!normalizedEmail(email)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'email', message: 'Please enter a valid email address.' } });
+    if (!isAdminRole(role)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'role', message: 'Please select a valid role.' } });
+    if (typeof isActive !== 'boolean') return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', field: 'isActive', message: 'Activation state is required.' } });
     const normalized = normalizedEmail(email)!;
     const current = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, isActive: true } });
     if (!current) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found.' } });
     if (id === req.auth!.user.id && !isActive) return res.status(409).json({ success: false, error: { code: 'SELF_DEACTIVATION', message: 'You cannot deactivate your own Administrator account.' } });
-    if (await findDuplicateEmail(normalized, id)) return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    if (await findDuplicateEmail(normalized, id)) return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', field: 'email', message: 'A User with this email already exists.' } });
     const removesActiveAdministrator = current.role === 'ADMINISTRATOR' && current.isActive && (role !== 'ADMINISTRATOR' || !isActive);
     if (removesActiveAdministrator && await prisma.user.count({ where: { role: 'ADMINISTRATOR', isActive: true } }) <= 1) {
       return res.status(409).json({ success: false, error: { code: 'LAST_ACTIVE_ADMINISTRATOR', message: 'At least one active Administrator must remain.' } });
@@ -394,7 +397,7 @@ app.patch('/api/admin/users/:id', requireTrustedOrigin, requireAuthentication, r
     const user = await prisma.user.update({ where: { id }, data: { name: name.trim(), email: normalized, role: role as any, isActive }, select: safeUserSelect });
     return res.status(200).json({ success: true, data: { user } });
   } catch (error: any) {
-    if (error?.code === 'P2002') return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'A User with this email already exists.' } });
+    if (error?.code === 'P2002') return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', field: 'email', message: 'A User with this email already exists.' } });
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to update User.' } });
   }
 });

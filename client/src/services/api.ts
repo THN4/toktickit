@@ -14,15 +14,13 @@ export interface AuthUser {
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
+  readonly field?: string;
 
-  constructor(
-    message: string,
-    status: number,
-    code?: string,
-  ) {
+  constructor(message: string, status: number, code?: string, field?: string) {
     super(message);
     this.status = status;
     this.code = code;
+    this.field = field;
   }
 }
 
@@ -304,7 +302,7 @@ async function ticketApiRequest<T>(path: string, init?: RequestInit): Promise<T>
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   const json = await res.json();
-  if (!res.ok) throw new ApiError(json.error?.message || "Ticket request failed.", res.status, json.error?.code);
+  if (!res.ok) throw new ApiError(json.error?.message || "Ticket request failed.", res.status, json.error?.code, json.error?.field);
   return json.data as T;
 }
 
