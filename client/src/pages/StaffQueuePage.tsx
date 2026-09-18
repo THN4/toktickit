@@ -240,7 +240,7 @@ export default function StaffQueuePage() {
         )}
         {!loading && !error && items.length > 0 && (
           <>
-            <div className="hidden overflow-x-auto rounded-xl border border-[#D1E0D8] bg-white md:block">
+            <div className="hidden overflow-x-auto rounded-xl border border-[#D1E0D8] bg-white lg:block">
               <table className="w-full min-w-[940px] text-left text-sm">
                 <thead className="bg-[#EFF6F0] text-[#294536]"><tr>
                   <th className="p-3">{sortButton("No.", "ticketNumber")}</th><th className="p-3">{sortButton("Updated", "updatedAt")}</th><th className="p-3">Summary</th><th className="p-3">Requester</th><th className="p-3">Owner</th><th className="p-3">{sortButton("Req. priority", "requestedPriority")}</th><th className="p-3">{sortButton("IT priority", "itPriority")}</th><th className="p-3">{sortButton("Status", "currentStatus")}</th><th className="p-3"><span className="sr-only">Open</span></th>
@@ -250,7 +250,7 @@ export default function StaffQueuePage() {
                 </tr>)}</tbody>
               </table>
             </div>
-            <div className="grid gap-3 md:hidden">{items.map(renderTicket)}</div>
+            <div className="grid gap-3 lg:hidden">{items.map(renderTicket)}</div>
           </>
         )}
       </section>
