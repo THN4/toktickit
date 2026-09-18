@@ -14,15 +14,13 @@ export interface AuthUser {
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
+  readonly field?: string;
 
-  constructor(
-    message: string,
-    status: number,
-    code?: string,
-  ) {
+  constructor(message: string, status: number, code?: string, field?: string) {
     super(message);
     this.status = status;
     this.code = code;
+    this.field = field;
   }
 }
 
@@ -196,6 +194,20 @@ export interface GetTicketsParams {
   pageSize?: number;
 }
 
+export interface AdminUserInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+}
+
+export interface CreateAdminUserInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  initialPassword: string;
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 // 1. ดึง Categories สำหรับใส่ใน Dropdown
 export async function fetchCategories(): Promise<Category[]> {
@@ -290,7 +302,7 @@ async function ticketApiRequest<T>(path: string, init?: RequestInit): Promise<T>
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   const json = await res.json();
-  if (!res.ok) throw new ApiError(json.error?.message || "Ticket request failed.", res.status, json.error?.code);
+  if (!res.ok) throw new ApiError(json.error?.message || "Ticket request failed.", res.status, json.error?.code, json.error?.field);
   return json.data as T;
 }
 
@@ -336,6 +348,25 @@ export function fetchInternalNotes(ticketNumber: string): Promise<TicketComment[
 
 export function createInternalNote(ticketNumber: string, content: string): Promise<TicketComment> {
   return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/notes`, { method: "POST", body: JSON.stringify({ content }) });
+}
+
+export function fetchAdminUsers(params: { search?: string; role?: UserRole | "" } = {}): Promise<{ users: AuthUser[] }> {
+  const query = new URLSearchParams();
+  if (params.search?.trim()) query.set("search", params.search.trim());
+  if (params.role) query.set("role", params.role);
+  return ticketApiRequest(`/admin/users${query.toString() ? `?${query.toString()}` : ""}`);
+}
+
+export function createAdminUser(input: CreateAdminUserInput): Promise<{ user: AuthUser }> {
+  return ticketApiRequest("/admin/users", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateAdminUser(id: number, input: AdminUserInput): Promise<{ user: AuthUser }> {
+  return ticketApiRequest(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function resetAdminUserPassword(id: number, initialPassword: string): Promise<{ user: AuthUser }> {
+  return ticketApiRequest(`/admin/users/${id}/initial-password`, { method: "POST", body: JSON.stringify({ initialPassword }) });
 }
 
 // 5. ดึงรายละเอียดตั๋วรายใบ (Ticket Detail)
