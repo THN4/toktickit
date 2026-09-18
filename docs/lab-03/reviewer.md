@@ -42,8 +42,9 @@
 |---|---|
 | **PR Link** | [#37](https://github.com/THN4/toktickit/pull/37) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment** | Requested changes; the review follow-up required the seed data to include three active and one inactive IT Staff user. |
-| **My Response** | Changed the `Quinn Walker` IT Staff seed fixture to `isActive: false`, then reported the updated seed composition and planned database-backed verification. |
+| **Review Comment (1)** | Requested changes; the review follow-up required the seed data to include three active and one inactive IT Staff user. |
+| **My Response (1)** | Changed the `Quinn Walker` IT Staff seed fixture to `isActive: false`, then reported the updated seed composition and planned database-backed verification. |
+| **Review Comment (2)** | "Everything is good." |
 | **Outcome** | Approved and merged on 2026-09-15 |
 
 ---
@@ -66,8 +67,9 @@
 |---|---|
 | **PR Link** | [#40](https://github.com/THN4/toktickit/pull/40) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment** | Requested regression coverage for spoofed `requesterId` values on Ticket creation and attachment endpoints. |
-| **My Response** | Added rejection tests for Ticket creation and attachment upload/download/delete, each returning `400 CLIENT_IDENTITY_NOT_ALLOWED`; requester regression tests passed 3/3. |
+| **Review Comment (1)** | Requested regression coverage for spoofed `requesterId` values on Ticket creation and attachment endpoints. |
+| **My Response (1)** | Added rejection tests for Ticket creation and attachment upload/download/delete, each returning `400 CLIENT_IDENTITY_NOT_ALLOWED`; requester regression tests passed 3/3. |
+| **Review Comment (2)** | Confirmed that the corrections were made successfully and approved the follow-up. |
 | **Outcome** | Approved and merged on 2026-09-16 |
 
 ---
@@ -78,8 +80,11 @@
 |---|---|
 | **PR Link** | [#41](https://github.com/THN4/toktickit/pull/41) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment** | Requested documented Queue controls, metadata-driven pagination, Queue UI-state tests, Forbidden direct-route feedback, mobile-safe cards, and no-results/failure/Retry/page-size coverage. |
-| **My Response** | Added the controls, `totalPages` pagination, Forbidden state, responsive cards, and the requested API/UI test coverage; reported 27 server tests, 22 client tests, and a passing build. |
+| **Review Comment (1)** | Requested documented Queue controls, metadata-driven pagination, Queue UI-state tests, Forbidden direct-route feedback, and unique fixtures. |
+| **My Response (1)** | Added the controls, `totalPages` pagination, Forbidden state, unique fixtures, and Queue UI coverage. |
+| **Review Comment (2)** | Requested distinct no-results, API failure/Retry, and page-size/pagination assertions, plus a mobile-safe card layout. |
+| **My Response (2)** | Added no-results/failure/Retry/sorting/page-size coverage and responsive cards; reported 27 server tests, 22 client tests, and a passing build. |
+| **Review Comment (3)** | Rechecked the final update and approved it. |
 | **Outcome** | Approved and merged on 2026-09-17 |
 
 ---
@@ -102,8 +107,9 @@
 |---|---|
 | **PR Link** | [#43](https://github.com/THN4/toktickit/pull/43) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment** | Requested a mobile user-card layout and accessible field-level validation with API field information. |
-| **My Response** | Added mobile cards below 768px; API errors now identify fields; inputs use `aria-invalid` and `aria-describedby`; added responsive and validation tests. |
+| **Review Comment (1)** | Requested a mobile user-card layout and accessible field-level validation with API field information. |
+| **My Response (1)** | Added mobile cards below 768px; API errors now identify fields; inputs use `aria-invalid` and `aria-describedby`; added responsive and validation tests. |
+| **Review Comment (2)** | Rechecked the responsive layout and field-level validation; no blocking issues remained. Approved. |
 | **Outcome** | Approved and merged on 2026-09-18 |
 
 ---
@@ -114,8 +120,9 @@
 |---|---|
 | **PR Link** | [#44](https://github.com/THN4/toktickit/pull/44) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment** | Mocked Playwright flows must not be presented as real E2E because they do not exercise the server, session cookies, or database. |
-| **My Response** | Reclassified them as mocked browser UI-integration tests; kept real E2E pending; added repeatable screenshots. During the evidence run, fixed Queue tablet overflow by switching to cards below the desktop breakpoint. |
+| **Review Comment (1)** | Mocked Playwright flows must not be presented as real E2E because they do not exercise the server, session cookies, or database. |
+| **My Response (1)** | Reclassified them as mocked browser UI-integration tests; kept real E2E pending; added repeatable screenshots. During the evidence run, fixed Queue tablet overflow by switching to cards below the desktop breakpoint. |
+| **Review Comment (2)** | Confirmed the revised classification, traceability, screenshot evidence, and Queue tablet fix; no blocking issues remained. Approved. |
 | **Outcome** | Approved and merged on 2026-09-18 |
 
 ---
@@ -129,8 +136,9 @@
 | Field | Detail |
 |---|---|
 | **PR Link** | [#26](https://github.com/JeffMerry/toktickit/pull/26) |
-| **My Review Comment** | Requested that planned client-test paths match the repository structure and that `URGENT` be implemented consistently in the Prisma enum, migration, API validation, UI, seeds, and tests. |
-| **Partner's Response** | Explained the planned test-path decision and confirmed that the priority migration would introduce `LOW`, `MEDIUM`, `HIGH`, and `URGENT` with matching coverage. |
+| **My Review Comment (1)** | Requested that planned client-test paths match the repository structure and that `URGENT` be implemented consistently in the Prisma enum, migration, API validation, UI, seeds, and tests. |
+| **Partner's Response (1)** | Explained the planned test-path decision and confirmed that the priority migration would introduce `LOW`, `MEDIUM`, `HIGH`, and `URGENT` with matching coverage. |
+| **My Review Comment (2)** | Acknowledged the explanation and approved the work. |
 | **Outcome** | Approved by me and merged on 2026-09-15 |
 
 ---
@@ -140,8 +148,9 @@
 | Field | Detail |
 |---|---|
 | **PR Link** | [#28](https://github.com/JeffMerry/toktickit/pull/28) |
-| **My Review Comment** | Requested an unassigned seed Ticket for claim workflow and a requester-owned `requesterResolvedAt` field independent of formal Ticket status. |
-| **Partner's Response** | Added an unassigned seed Ticket, nullable owner seed handling, `requesterResolvedAt` migration/seed data, documentation updates, and regression coverage. |
+| **My Review Comment (1)** | Requested an unassigned seed Ticket for claim workflow and a requester-owned `requesterResolvedAt` field independent of formal Ticket status. |
+| **Partner's Response (1)** | Added an unassigned seed Ticket, nullable owner seed handling, `requesterResolvedAt` migration/seed data, documentation updates, and regression coverage. |
+| **My Review Comment (2)** | "All done, great job Kittithat." |
 | **Outcome** | Approved by me and merged on 2026-09-15 |
 
 ---
@@ -151,8 +160,9 @@
 | Field | Detail |
 |---|---|
 | **PR Link** | [#30](https://github.com/JeffMerry/toktickit/pull/30) |
-| **My Review Comment** | Requested role-specific navigation so Requesters see Ticket actions, IT Staff see Queue, Administrators see User Management, plus client test coverage. |
-| **Partner's Response** | Updated navigation and placeholders by role, prevented non-Requester Ticket requests, added role-navigation tests, and reported build plus client tests passing. |
+| **My Review Comment (1)** | Requested role-specific navigation so Requesters see Ticket actions, IT Staff see Queue, Administrators see User Management, plus client test coverage. |
+| **Partner's Response (1)** | Updated navigation and placeholders by role, prevented non-Requester Ticket requests, added role-navigation tests, and reported build plus client tests passing. |
+| **My Review Comment (2)** | "The issue I reported has been resolved; everything is in order. Great job." |
 | **Outcome** | Approved by me and merged on 2026-09-16 |
 
 ---
@@ -162,8 +172,9 @@
 | Field | Detail |
 |---|---|
 | **PR Link** | [#32](https://github.com/JeffMerry/toktickit/pull/32) |
-| **My Review Comment** | Asked whether Administrator Ticket workflow access was intentional and required the authorization matrix/specification to make the decision explicit if so. |
-| **Partner's Response** | Confirmed the approved specification explicitly permits Administrator operational Ticket access while normal navigation remains focused on User Management. |
+| **My Review Comment (1)** | Asked whether Administrator Ticket workflow access was intentional and required the authorization matrix/specification to make the decision explicit if so. |
+| **Partner's Response (1)** | Confirmed the approved specification explicitly permits Administrator operational Ticket access while normal navigation remains focused on User Management. |
+| **My Review Comment (2)** | "Thanks for clarification, so everything is done." |
 | **Outcome** | Clarification accepted; approved by me and merged on 2026-09-17 |
 
 ---
@@ -173,8 +184,9 @@
 | Field | Detail |
 |---|---|
 | **PR Link** | [#35](https://github.com/JeffMerry/toktickit/pull/35) |
-| **My Review Comment** | Requested a concurrency-safe “at least one active Administrator” safeguard and a concurrent regression test. |
-| **Partner's Response** | Put count, safeguard validation, user update, and session revocation inside a PostgreSQL transaction protected by an advisory lock; added concurrent cross-deactivation coverage. |
+| **My Review Comment (1)** | Requested a concurrency-safe “at least one active Administrator” safeguard and a concurrent regression test. |
+| **Partner's Response (1)** | Put count, safeguard validation, user update, and session revocation inside a PostgreSQL transaction protected by an advisory lock; added concurrent cross-deactivation coverage. |
+| **My Review Comment (2)** | "Okay great job Kittithat." |
 | **Outcome** | Follow-up acknowledged; merged on 2026-09-17 |
 
 ---
