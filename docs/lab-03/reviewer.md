@@ -211,3 +211,9 @@
 | **Partner's Response (1)** | Added Staff Ticket Detail tablet/mobile screenshots and linked the complete viewport set in the release-evidence matrix. Updated implemented tests to `Pass` with actual paths, while genuinely unimplemented coverage remains `Planned`; reported `npm run capture:lab3-evidence` passing 1 test and `npm run test:e2e` passing 4 tests. |
 | **My Review Comment (2)** | Rechecked the follow-up: both requested items were complete, the capture/E2E results were recorded, and the PR was approved. |
 | **Outcome** | Approved by me and merged on 2026-09-18 |
+
+---
+
+## Post-review Follow-up
+
+After PR #44 was merged, Real E2E was added separately on `feature/8-lab3-real-e2e` so the original review record remains accurate: PR #44 contained mocked browser UI-integration evidence, not Real E2E. The follow-up suite uses the real client, Express server, session cookie, PostgreSQL database, and deterministic seed fixtures for E2E-01 through E2E-03. Each flow passed when executed individually; it will be recorded as a separate PR review after integration into `lab3-staging`.
