@@ -29,23 +29,24 @@ describe("Lab 3 Administrator User Management UI", () => {
 
   it("renders the documented list, filters, roles, and activation badges", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByText("Admin User")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Admin User").length).toBeGreaterThan(0));
     expect(screen.getByRole("button", { name: "+ Create User" })).toBeInTheDocument();
     expect(screen.getByLabelText("Search users")).toBeInTheDocument();
     expect(screen.getByLabelText("Role filter")).toBeInTheDocument();
-    expect(screen.getAllByText("Active").length).toBe(2);
-    expect(screen.getByText("Inactive")).toBeInTheDocument();
+    expect(screen.getAllByText("Active").length).toBe(4);
+    expect(screen.getAllByText("Inactive").length).toBe(2);
     fireEvent.change(screen.getByLabelText("Search users"), { target: { value: "inactive" } });
     await waitFor(() => expect(api.fetchAdminUsers).toHaveBeenLastCalledWith({ search: "inactive", role: "" }));
   });
 
   it("validates and submits the create-user dialog with an initial password", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByText("Admin User")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Admin User").length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "+ Create User" }));
     expect(screen.getByRole("dialog", { name: "Create User" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create User" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Name and email are required.");
+    expect(screen.getByText("Name is required.")).toBeInTheDocument();
+    expect(screen.getByLabelText("User name")).toHaveAttribute("aria-invalid", "true");
     fireEvent.change(screen.getByLabelText("User name"), { target: { value: "New User" } });
     fireEvent.change(screen.getByLabelText("User email"), { target: { value: "new@example.test" } });
     fireEvent.change(screen.getByLabelText("Initial password"), { target: { value: "initial-password" } });
@@ -55,7 +56,7 @@ describe("Lab 3 Administrator User Management UI", () => {
 
   it("edits a user and requires confirmation before deactivation", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByText("Requester User")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Requester User").length).toBeGreaterThan(0));
     fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[1]);
     expect(screen.getByRole("dialog", { name: "Edit User" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
@@ -72,5 +73,12 @@ describe("Lab 3 Administrator User Management UI", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Service unavailable"));
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(screen.getByText("No users are available.")).toBeInTheDocument());
+  });
+
+  it("renders the mobile card layout without the desktop table", async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("user-card-list")).toBeInTheDocument());
+    expect(screen.getByTestId("user-card-list")).toHaveClass("md:hidden");
+    expect(screen.getByTestId("user-table")).toHaveClass("md:block");
   });
 });

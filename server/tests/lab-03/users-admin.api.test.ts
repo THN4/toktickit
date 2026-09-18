@@ -56,8 +56,12 @@ describe('Lab 3 Administrator User Management API', () => {
     expect(created.status).toBe(201);
     expect(created.body.data.user).toMatchObject({ email: `created-${fixture}@example.test`, role: 'IT_STAFF', isActive: true, mustChangePassword: true });
     expect(created.body.data.user).not.toHaveProperty('passwordHash');
-    expect((await request(app).post('/api/admin/users').set('Cookie', cookie(adminSession)).send({ name: 'Duplicate', email: `CREATED-${fixture}@example.test`, role: 'REQUESTER', initialPassword: 'InitialPassword!123' })).status).toBe(409);
-    expect((await request(app).post('/api/admin/users').set('Cookie', cookie(adminSession)).send({ name: 'Invalid', email: `invalid-${fixture}@example.test`, role: 'UNKNOWN', initialPassword: 'short' })).status).toBe(400);
+    const duplicate = await request(app).post('/api/admin/users').set('Cookie', cookie(adminSession)).send({ name: 'Duplicate', email: `CREATED-${fixture}@example.test`, role: 'REQUESTER', initialPassword: 'InitialPassword!123' });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error).toMatchObject({ code: 'DUPLICATE_EMAIL', field: 'email' });
+    const invalid = await request(app).post('/api/admin/users').set('Cookie', cookie(adminSession)).send({ name: 'Invalid', email: `invalid-${fixture}@example.test`, role: 'UNKNOWN', initialPassword: 'short' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error).toMatchObject({ code: 'VALIDATION_ERROR', field: 'role' });
   });
 
   it('edits account fields, deactivates safely, and resets an initial password', async () => {
