@@ -5,6 +5,7 @@ TokTickIT is an IT Service Desk web application developed for **CPE334: Introduc
 The project is developed iteratively through multi-sprint laboratory milestones:
 - **Lab 1:** Foundation vertical slice (React UI → Express REST API → Prisma ORM → PostgreSQL).
 - **Lab 2:** Requester Ticketing MVP with complete ticket creation, dashboard filtering, attachment lifecycle management, and responsive design.
+- **Lab 3:** Authenticated role-based service desk with Requester, IT Staff, and Administrator workflows.
 
 ---
 
@@ -130,6 +131,19 @@ npx playwright test
 # Or view interactive test report
 npx playwright show-report
 ```
+
+### Lab 3 quality evidence
+
+```bash
+npx playwright test e2e/lab-03 --project=desktop-chrome
+```
+
+This runs deterministic mocked browser UI-integration coverage for
+authentication, IT Staff queue filtering, Administrator user creation, and
+responsive User Management. It starts the client only and intercepts API
+requests, so it is not evidence of real server/session/database E2E behavior.
+The visual test writes desktop, tablet, and mobile screenshots to
+`artifacts/lab-03/screenshots/user-management/`.
 Automatically verifies all 7 user lifecycle flows (`E2E-01` to `E2E-07`) and captures all 15 responsive screenshots under `artifacts/lab-02/screenshots/`.
 
 ---

@@ -14,4 +14,4 @@
 
 | PR | Branch | Reviewer | Review / response | Outcome |
 |---|---|---|---|---|
-| _To be completed_ | | | | |
+| [#43](https://github.com/THN4/toktickit/pull/43) | `feature/6-lab3-user-management` | JeffMerry | Requested mobile card layout/no-overflow and accessible field-level validation. Both were implemented, tested, and answered in the PR discussion. | Merged to `lab3-staging` on 2026-09-18 |
