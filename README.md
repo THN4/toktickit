@@ -138,8 +138,10 @@ npx playwright show-report
 npx playwright test e2e/lab-03 --project=desktop-chrome
 ```
 
-This runs deterministic mocked-backend E2E coverage for authentication, IT Staff
-queue filtering, Administrator user creation, and responsive User Management.
+This runs deterministic mocked browser UI-integration coverage for
+authentication, IT Staff queue filtering, Administrator user creation, and
+responsive User Management. It starts the client only and intercepts API
+requests, so it is not evidence of real server/session/database E2E behavior.
 The visual test writes desktop, tablet, and mobile screenshots to
 `artifacts/lab-03/screenshots/user-management/`.
 Automatically verifies all 7 user lifecycle flows (`E2E-01` to `E2E-07`) and captures all 15 responsive screenshots under `artifacts/lab-02/screenshots/`.

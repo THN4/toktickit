@@ -27,20 +27,23 @@ criterion in `specification.md` maps to at least one planned test.
 | UI-02 | UI | AC-07–08 | Queue loading, filters, no-results, failure/retry, badges, sorting, and pagination | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass (5 tests) |
 | UI-03 | UI | AC-09–14 | Staff Detail controls/confirmations, comments, internal-note restriction, and requester resolution | `client/tests/lab-03/StaffTicketDetail.test.tsx`, `client/tests/lab-03/RequesterCollaboration.test.tsx` | Pass (5 tests) |
 | UI-04 | UI | AC-15–19, AC-21 | User list/form, field validation, responsive mobile cards, and safety feedback | `client/tests/lab-03/UserManagement.test.tsx` | Pass (5 tests) |
-| E2E-01 | E2E | AC-01–04 | Login, change password, logout, blocked direct access | `e2e/lab-03/authentication.spec.ts` | Pass (2 tests) |
-| E2E-02 | E2E | AC-07–08 | Staff Queue search/filter and safe ticket data | `e2e/lab-03/staff-ticket-flow.spec.ts` | Pass (1 test) |
-| E2E-03 | E2E | AC-15–17 | Administrator list, filter, create-user, and initial-password flow | `e2e/lab-03/user-administration.spec.ts` | Pass (1 test) |
-| VIS-01 | Visual | AC-21 | User Management at desktop/tablet/mobile; no overflow | `e2e/lab-03/responsive.spec.ts` | Pass (1 test; 3 screenshots) |
+| BUI-01 | Mocked browser UI integration | AC-01–04 | Login, password-change, logout, and route-guard UI states; API is mocked with `page.route()` | `e2e/lab-03/authentication.spec.ts` | Pass (2 tests) |
+| BUI-02 | Mocked browser UI integration | AC-07–08 | Staff Queue rendering, search, and status-filter UI; API is mocked with `page.route()` | `e2e/lab-03/staff-ticket-flow.spec.ts` | Pass (1 test) |
+| BUI-03 | Mocked browser UI integration | AC-15–17 | Administrator list/filter/create UI; API is mocked with `page.route()` | `e2e/lab-03/user-administration.spec.ts` | Pass (1 test) |
+| E2E-01 | Real E2E | AC-01–04 | Real server, session cookie, seeded database authentication flow | `e2e/lab-03/authentication.real.spec.ts` | Pending |
+| E2E-02 | Real E2E | AC-07–14 | Real server, seeded database IT Staff ticket workflow | `e2e/lab-03/staff-ticket-flow.real.spec.ts` | Pending |
+| E2E-03 | Real E2E | AC-15–19 | Real server, seeded database Administrator account-management flow | `e2e/lab-03/user-administration.real.spec.ts` | Pending |
+| VIS-01 | Mocked visual/responsive | AC-21 | User Management at desktop/tablet/mobile; no overflow; API is mocked | `e2e/lab-03/responsive.spec.ts` | Pass (1 test; 3 screenshots) |
 
 ## 2. Traceability
 
 | AC range | Planned evidence |
 |---|---|
-| AC-01–04 | API-01–04, UI-01, E2E-01 |
+| AC-01–04 | API-01–04, UI-01, BUI-01, E2E-01 (pending real evidence) |
 | AC-05–06 | API-05–06, MIG-01 |
-| AC-07–08 | API-07–08, UI-02, E2E-02 |
-| AC-09–14 | API-09–10, UI-03, E2E-02 |
-| AC-15–19 | API-11, UI-04, E2E-03 |
+| AC-07–08 | API-07–08, UI-02, BUI-02, E2E-02 (pending real evidence) |
+| AC-09–14 | API-09–10, UI-03, E2E-02 (pending real evidence) |
+| AC-15–19 | API-11, UI-04, BUI-03, E2E-03 (pending real evidence) |
 | AC-20 | MIG-01 |
 | AC-21 | VIS-01 |
 
