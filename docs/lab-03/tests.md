@@ -28,7 +28,7 @@ criterion in `specification.md` maps to at least one planned test.
 | UI-03 | UI | AC-09–14 | Staff Detail controls/confirmations, comments, internal-note restriction, and requester resolution | `client/tests/lab-03/StaffTicketDetail.test.tsx`, `client/tests/lab-03/RequesterCollaboration.test.tsx` | Pass (5 tests) |
 | UI-04 | UI | AC-15–19, AC-21 | User list/form, field validation, responsive mobile cards, and safety feedback | `client/tests/lab-03/UserManagement.test.tsx` | Pass (5 tests) |
 | E2E-01 | E2E | AC-01–04 | Login, change password, logout, blocked direct access | `e2e/lab-03/authentication.spec.ts` | Pass (2 tests) |
-| E2E-02 | E2E | AC-07–14 | Staff Queue through Ticket workflow | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
+| E2E-02 | E2E | AC-07–08 | Staff Queue search/filter and safe ticket data | `e2e/lab-03/staff-ticket-flow.spec.ts` | Pass (1 test) |
 | E2E-03 | E2E | AC-15–19 | Administrator account-management flow | `e2e/lab-03/user-administration.spec.ts` | Planned |
 | VIS-01 | Visual | AC-21 | Major screens at desktop/tablet/mobile; no overflow | `e2e/lab-03/responsive.spec.ts` | Planned |
 
