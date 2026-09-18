@@ -20,13 +20,13 @@ criterion in `specification.md` maps to at least one planned test.
 | API-08 | API | AC-08 | Invalid Queue query is 400 | `server/tests/lab-03/staff-queue.api.test.ts` | Pass (3 tests) |
 | API-09 | API | AC-09–11 | Claim/assignment/priority/status workflow validation and requester resolution | `server/tests/lab-03/staff-ticket-operations.api.test.ts` | Pass (4 tests) |
 | API-10 | API | AC-12–14 | Public Comments and protected Internal Notes | `server/tests/lab-03/staff-ticket-operations.api.test.ts` | Pass (4 tests) |
-| API-11 | API | AC-15–19 | User admin, duplicate email, password reset, admin safety | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| API-11 | API | AC-15–19 | User admin, duplicate email, password reset, admin safety | `server/tests/lab-03/users-admin.api.test.ts` | Pass (3 tests) |
 | MIG-01 | Migration | AC-20 | Lab 2 users/tickets/attachments retain ownership | `server/tests/lab-03/migration.regression.test.ts` | Planned |
 | UI-01 | UI | AC-01–03 | Login and Change Password validation/states | `client/tests/lab-03/Authentication.test.tsx` | Pass (3 tests) |
 | UI-05 | UI security | AC-04–05, AC-19 | Unauthenticated route redirect and Requester-only route guard | `client/src/App.test.tsx` | Pass (1 test) |
 | UI-02 | UI | AC-07–08 | Queue loading, filters, no-results, failure/retry, badges, sorting, and pagination | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass (5 tests) |
 | UI-03 | UI | AC-09–14 | Staff Detail controls/confirmations, comments, internal-note restriction, and requester resolution | `client/tests/lab-03/StaffTicketDetail.test.tsx`, `client/tests/lab-03/RequesterCollaboration.test.tsx` | Pass (5 tests) |
-| UI-04 | UI | AC-15–19 | User list/form and safety feedback | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
+| UI-04 | UI | AC-15–19 | User list/form and safety feedback | `client/tests/lab-03/UserManagement.test.tsx` | Pass (4 tests) |
 | E2E-01 | E2E | AC-01–04 | Login, change password, logout, blocked direct access | `e2e/lab-03/authentication.spec.ts` | Planned |
 | E2E-02 | E2E | AC-07–14 | Staff Queue through Ticket workflow | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
 | E2E-03 | E2E | AC-15–19 | Administrator account-management flow | `e2e/lab-03/user-administration.spec.ts` | Planned |

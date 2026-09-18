@@ -120,9 +120,11 @@ All endpoints require `ADMINISTRATOR`.
 | PATCH | `/admin/users/:id` | `{ name, email, role, isActive }` | Updated safe User |
 | POST | `/admin/users/:id/initial-password` | `{ initialPassword }` | Resets password; requires next-login change |
 
-Create/update reject duplicate normalized email and invalid roles. Deactivation
-rejects self-deactivation and removal of the last active Administrator. No
-delete, bulk, import/export, history, or multi-role endpoint exists.
+Create/update reject duplicate normalized email and invalid roles. Initial
+passwords are local-only 12–128 character values, and responses always use the
+safe User shape without password/hash fields. Deactivation rejects
+self-deactivation and removal of the last active Administrator. No delete,
+bulk, import/export, history, or multi-role endpoint exists.
 
 ## 7. Authorization and Failure Rules
 
