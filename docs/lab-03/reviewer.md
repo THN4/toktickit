@@ -42,7 +42,7 @@
 |---|---|
 | **PR Link** | [#37](https://github.com/THN4/toktickit/pull/37) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment (1)** | Requested changes; the review follow-up required the seed data to include three active and one inactive IT Staff user. |
+| **Review Comment (1)** | A `Changes requested` review was submitted without written feedback. |
 | **My Response (1)** | Changed the `Quinn Walker` IT Staff seed fixture to `isActive: false`, then reported the updated seed composition and planned database-backed verification. |
 | **Review Comment (2)** | "Everything is good." |
 | **Outcome** | Approved and merged on 2026-09-15 |
@@ -67,7 +67,7 @@
 |---|---|
 | **PR Link** | [#40](https://github.com/THN4/toktickit/pull/40) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment (1)** | Requested regression coverage for spoofed `requesterId` values on Ticket creation and attachment endpoints. |
+| **Review Comment (1)** | Made a non-blocking suggestion to add regression coverage for spoofed `requesterId` values on Ticket creation and attachment endpoints. |
 | **My Response (1)** | Added rejection tests for Ticket creation and attachment upload/download/delete, each returning `400 CLIENT_IDENTITY_NOT_ALLOWED`; requester regression tests passed 3/3. |
 | **Review Comment (2)** | Confirmed that the corrections were made successfully and approved the follow-up. |
 | **Outcome** | Approved and merged on 2026-09-16 |
@@ -107,7 +107,7 @@
 |---|---|
 | **PR Link** | [#43](https://github.com/THN4/toktickit/pull/43) |
 | **Reviewer** | Kittithat Disthanakornkun ([@JeffMerry](https://github.com/JeffMerry)) |
-| **Review Comment (1)** | Requested a mobile user-card layout and accessible field-level validation with API field information. |
+| **Review Comment (1)** | Requested a mobile user-card layout and accessible field-level validation; API field information was recommended to help the client identify the affected field. |
 | **My Response (1)** | Added mobile cards below 768px; API errors now identify fields; inputs use `aria-invalid` and `aria-describedby`; added responsive and validation tests. |
 | **Review Comment (2)** | Rechecked the responsive layout and field-level validation; no blocking issues remained. Approved. |
 | **Outcome** | Approved and merged on 2026-09-18 |
@@ -216,4 +216,4 @@
 
 ## Post-review Follow-up
 
-After PR #44 was merged, Real E2E was added separately on `feature/8-lab3-real-e2e` so the original review record remains accurate: PR #44 contained mocked browser UI-integration evidence, not Real E2E. The follow-up suite uses the real client, Express server, session cookie, PostgreSQL database, and deterministic seed fixtures for E2E-01 through E2E-03. Each flow passed when executed individually; it will be recorded as a separate PR review after integration into `lab3-staging`.
+After PR #44 was merged, Real E2E was added separately in [PR #45](https://github.com/THN4/toktickit/pull/45) on `feature/8-lab3-real-e2e`, so the original review record remains accurate: PR #44 contained mocked browser UI-integration evidence, not Real E2E. The follow-up suite uses the real client, Express server, session cookie, PostgreSQL database, and deterministic seed fixtures for E2E-01 through E2E-03. Each flow passed when executed individually. JeffMerry reviewed and approved PR #45 with no blocking issues, and it was merged into `lab3-staging` on 2026-09-19.
