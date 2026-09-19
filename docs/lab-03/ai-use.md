@@ -17,15 +17,3 @@
 | 7 | แยก mocked UI กับ Real E2E | `ช่วยอธิบายว่า Playwright ที่ใช้ page.route() ต่างจาก Real E2E อย่างไรในเรื่อง server, cookie, authorization middleware และ PostgreSQL แล้วช่วยตรวจ tests.md ว่าตั้งชื่อหรือสถานะผิดหรือไม่` | ผมเข้าใจว่าการเปิด browser ไม่ได้แปลว่าเป็น E2E เสมอไป ถ้า API ถูก mock ต้องเรียกว่า browser UI integration และระบุข้อจำกัดให้ตรงหลักฐาน |
 | 8 | Implement Real E2E | `ช่วยออกแบบและ implement Real E2E สำหรับ authentication, IT Staff Queue/Ticket Detail และ Administrator User Management โดยต้องใช้ Vite client, Express server, session cookie และ PostgreSQL seed จริง ห้ามใช้ page.route() แล้วอธิบายว่าแต่ละ flow พิสูจน์ acceptance criteria ใด` | ผมเห็นความแตกต่างระหว่าง test ที่ผ่านด้วย mock กับ test ที่ตรวจตั้งแต่ browser ถึง database จริง จึงเปลี่ยน E2E status เป็น Pass ได้อย่างมีหลักฐาน |
 
----
-
-## My Reflection
-
-การใช้ AI ใน Lab 3 ไม่ได้จำกัดอยู่ที่การสั่งให้สร้างโค้ด ผมใช้ AI เพื่อถามแนวคิดก่อนตัดสินใจ เช่น authorization matrix, password lifecycle, transaction safety, responsive behavior และประเภทของ automated test เมื่อเข้าใจเหตุผลแล้วจึงค่อยให้ช่วย implement และเขียน test ตามขอบเขตที่กำหนด
-
-สิ่งที่เรียนรู้มากที่สุดคือผลลัพธ์จาก AI ต้องตรวจสอบกับ specification, โค้ดจริง, test output และ review จากเพื่อนเสมอ ตัวอย่างคือ screenshot ชุดแรกดูเหมือนใช้งานได้ แต่เมื่อเทียบเอกสารกลับพบว่าขาดหลายหน้าจอ และ Playwright ที่ mock API ก็ไม่ควรถูกเรียกว่า Real E2E
-
-ผมได้เรียนรู้การทำ traceability โดยเชื่อม acceptance criteria กับ API test, UI test, visual evidence และ Real E2E การให้ AI อธิบายข้อดีข้อเสียก่อนแก้ไขช่วยให้ตัดสินใจดีขึ้น แต่ผมยังรับผิดชอบการเลือกแนวทาง ตรวจผล และยืนยันว่าโค้ดอยู่ใน scope ของ Lab 3
-
-> [!NOTE]
-> เอกสารนี้บันทึกการใช้ AI ตามการทำงานจริงของผม AI ช่วยวิเคราะห์ อธิบาย implement รัน test และจัดรูปแบบ Markdown ส่วนการตัดสินใจ ตรวจสอบผลลัพธ์ และความรับผิดชอบต่อผลงานเป็นของผม
