@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import CreateTicketPage from '../../src/pages/CreateTicketPage';
-import { RequesterProvider } from '../../src/contexts/RequesterContext';
+import { AuthProvider } from '../../src/contexts/AuthContext';
 import * as api from '../../src/services/api';
 
 describe('UI-01, UI-04, UI-05, UI-06, UI-14: CreateTicket Component Tests', () => {
@@ -24,9 +24,7 @@ describe('UI-01, UI-04, UI-05, UI-06, UI-14: CreateTicket Component Tests', () =
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    sessionStorage.clear();
-    sessionStorage.setItem('selectedRequester', JSON.stringify(mockRequester));
-
+    vi.spyOn(api, 'fetchCurrentUser').mockResolvedValue({ user: { ...mockRequester, role: 'REQUESTER', isActive: true, mustChangePassword: false } });
     vi.spyOn(api, 'fetchCategories').mockResolvedValue(mockCategories);
     vi.spyOn(api, 'fetchRelatedSystems').mockResolvedValue(mockSystems);
   });
@@ -34,9 +32,9 @@ describe('UI-01, UI-04, UI-05, UI-06, UI-14: CreateTicket Component Tests', () =
   function renderComponent() {
     return render(
       <BrowserRouter>
-        <RequesterProvider>
+        <AuthProvider>
           <CreateTicketPage />
-        </RequesterProvider>
+        </AuthProvider>
       </BrowserRouter>
     );
   }

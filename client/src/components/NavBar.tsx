@@ -1,16 +1,25 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useRequester } from "../contexts/RequesterContext";
+import { useAuth } from "../contexts/AuthContext";
+
+function roleLabel(role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR") {
+  if (role === "IT_STAFF") return "IT Staff";
+  if (role === "ADMINISTRATOR") return "Administrator";
+  return "Requester";
+}
 
 export default function NavBar() {
-  const { requester, clearRequester } = useRequester();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  function handleChangeRequester() {
-    clearRequester();
-    setMobileMenuOpen(false);
-    navigate("/select-requester");
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      setMobileMenuOpen(false);
+      navigate("/login");
+    }
   }
 
   return (
@@ -26,6 +35,7 @@ export default function NavBar() {
 
         {/* Desktop Nav links */}
         <div className="hidden md:flex items-center gap-6">
+          {user?.role === "IT_STAFF" ? <NavLink to="/staff/tickets" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>My Queue</NavLink> : user?.role === "ADMINISTRATOR" ? <NavLink to="/admin/users" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>Users</NavLink> : <>
           <NavLink
             to="/my-tickets"
             className={({ isActive }) =>
@@ -51,32 +61,30 @@ export default function NavBar() {
           >
             Create Ticket
           </NavLink>
+          </>}
         </div>
 
         {/* Desktop Profile / Requester area */}
         <div className="hidden md:flex items-center gap-3">
-          {requester ? (
+          {user ? (
             <>
               <span className="text-green-100 text-sm">
-                👤 {requester.name}
+                👤 {user.name} · {roleLabel(user.role)}
               </span>
-              <button
-                onClick={handleChangeRequester}
-                className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-md transition-colors font-medium cursor-pointer"
-              >
-                Change Requester
+              <button onClick={() => void handleLogout()} className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-md transition-colors font-medium cursor-pointer">
+                Log out
               </button>
             </>
           ) : (
-            <span className="text-green-200 text-sm italic">No requester selected</span>
+            <span className="text-green-200 text-sm italic">No signed-in user</span>
           )}
         </div>
 
         {/* Mobile Hamburger Toggle Button */}
         <div className="flex md:hidden items-center gap-2">
-          {requester && (
+          {user && (
             <span className="text-green-100 text-xs font-medium truncate max-w-[120px]">
-              👤 {requester.name.split(" ")[0]}
+              👤 {user.name.split(" ")[0]}
             </span>
           )}
           <button
@@ -105,23 +113,20 @@ export default function NavBar() {
           {/* User Info on Mobile */}
           <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
             <div>
-              <span className="text-xs text-green-200 block">Current Requester:</span>
+              <span className="text-xs text-green-200 block">Signed in as:</span>
               <span className="text-sm font-semibold text-white">
-                {requester ? requester.name : "None selected"}
+                {user ? `${user.name} · ${roleLabel(user.role)}` : "No signed-in user"}
               </span>
             </div>
-            {requester && (
-              <button
-                onClick={handleChangeRequester}
-                className="text-xs bg-white text-[#006B3C] font-semibold px-3 py-1.5 rounded shadow-sm hover:bg-green-50 transition-colors cursor-pointer"
-              >
-                Change Requester
-              </button>
-            )}
           </div>
+
+          <button onClick={() => void handleLogout()} className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-green-100 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">
+            Log out
+          </button>
 
           {/* Navigation links on Mobile */}
           <div className="flex flex-col gap-1">
+            {user?.role === "IT_STAFF" ? <NavLink to="/staff/tickets" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md text-sm font-medium text-green-100 hover:bg-white/10">📋 My Queue</NavLink> : user?.role === "ADMINISTRATOR" ? <NavLink to="/admin/users" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md text-sm font-medium text-green-100 hover:bg-white/10">👥 Users</NavLink> : <>
             <NavLink
               to="/my-tickets"
               onClick={() => setMobileMenuOpen(false)}
@@ -149,6 +154,7 @@ export default function NavBar() {
             >
               ➕ Create Ticket
             </NavLink>
+            </>}
           </div>
         </div>
       )}

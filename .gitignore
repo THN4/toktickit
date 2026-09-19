@@ -1,7 +1,12 @@
 node_modules/
 test-results/
 playwright-report/
+playwright-report-real/
 docs/lab-01/screenshots/
 docs/lab-02/screenshots/
 .env
 dist/
+
+# Personal Lab 3 reading notes — intentionally local only
+docs/lab-03/LAB3_WORKFLOW_PRIVATE.md
+docs/lab-03/lab_3_sheet.md

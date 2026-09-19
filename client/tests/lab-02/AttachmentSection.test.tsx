@@ -2,16 +2,9 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import TicketDetailPage from "../../src/pages/TicketDetailPage";
-import { RequesterProvider } from "../../src/contexts/RequesterContext";
 import * as api from "../../src/services/api";
 
 describe("UI-02, UI-03, UI-12, UI-13: Attachment Section Tests", () => {
-  const mockRequester = {
-    id: 1,
-    name: "Jennifer Anderson",
-    email: "jennifer@example.com",
-  };
-
   const baseTicketDetail: api.TicketDetail = {
     id: 1,
     ticketNumber: "TKT-2026-000001",
@@ -30,18 +23,15 @@ describe("UI-02, UI-03, UI-12, UI-13: Attachment Section Tests", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    sessionStorage.clear();
-    sessionStorage.setItem("selectedRequester", JSON.stringify(mockRequester));
+    vi.spyOn(api, "fetchPublicComments").mockResolvedValue([]);
   });
 
   function renderComponent() {
     return render(
       <MemoryRouter initialEntries={["/tickets/TKT-2026-000001"]}>
-        <RequesterProvider>
-          <Routes>
-            <Route path="/tickets/:ticketNumber" element={<TicketDetailPage />} />
-          </Routes>
-        </RequesterProvider>
+        <Routes>
+          <Route path="/tickets/:ticketNumber" element={<TicketDetailPage />} />
+        </Routes>
       </MemoryRouter>
     );
   }

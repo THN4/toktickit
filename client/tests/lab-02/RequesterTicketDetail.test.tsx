@@ -1,17 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import TicketDetailPage from "../../src/pages/TicketDetailPage";
-import { RequesterProvider } from "../../src/contexts/RequesterContext";
 import * as api from "../../src/services/api";
 
 describe("UI-11: TicketDetail Component Tests (AC-16)", () => {
-  const mockRequester = {
-    id: 1,
-    name: "Jennifer Anderson",
-    email: "jennifer@example.com",
-  };
-
   const mockTicketDetail: api.TicketDetail = {
     id: 1,
     ticketNumber: "TKT-2026-000001",
@@ -34,18 +27,15 @@ describe("UI-11: TicketDetail Component Tests (AC-16)", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    sessionStorage.clear();
-    sessionStorage.setItem("selectedRequester", JSON.stringify(mockRequester));
+    vi.spyOn(api, "fetchPublicComments").mockResolvedValue([]);
   });
 
   function renderComponent() {
     return render(
       <MemoryRouter initialEntries={["/tickets/TKT-2026-000001"]}>
-        <RequesterProvider>
-          <Routes>
-            <Route path="/tickets/:ticketNumber" element={<TicketDetailPage />} />
-          </Routes>
-        </RequesterProvider>
+        <Routes>
+          <Route path="/tickets/:ticketNumber" element={<TicketDetailPage />} />
+        </Routes>
       </MemoryRouter>
     );
   }
@@ -69,9 +59,9 @@ describe("UI-11: TicketDetail Component Tests (AC-16)", () => {
     expect(screen.getByText("IN PROGRESS")).toBeInTheDocument();
 
     // Verify there are NO editable input fields in the metadata/header card
-    const inputs = screen.queryAllByRole("textbox");
-    // Only removalReason textarea inside the closed modal exists in DOM or none
-    expect(inputs.length).toBe(0);
+    const headerCard = screen.getByText("Ticket Number").closest(".bg-white");
+    expect(headerCard).not.toBeNull();
+    expect(within(headerCard as HTMLElement).queryAllByRole("textbox")).toHaveLength(0);
   });
 });
 

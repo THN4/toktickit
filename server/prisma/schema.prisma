@@ -22,24 +22,57 @@ enum TicketStatus {
   NEW
   OPEN
   IN_PROGRESS
+  WAITING_FOR_REQUESTER
   RESOLVED
   CLOSED
+  REOPENED
+  CANCELLED
 }
 
-// ─── Development Requester ────────────────────────────────────────────────────
+enum UserRole {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
+}
 
-model RequesterUser {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─── User ───────────────────────────────────────────────────────────────────
+
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  // Nullable only during the non-destructive Lab 2 data migration. A later
+  // migration makes this required after every legacy user has been backfilled.
+  passwordHash       String?
+  role               UserRole @default(REQUESTER)
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   tickets             Ticket[]     @relation("TicketRequester")
   ownedTickets        Ticket[]     @relation("TicketOwner")
   uploadedAttachments Attachment[] @relation("AttachmentUploader")
   removedAttachments  Attachment[] @relation("AttachmentRemover")
+  publicComments      PublicComment[]
+  internalNotes       InternalNote[]
+  sessions            Session[]
+
+  @@index([role, isActive])
+}
+
+// ─── Server-side Session ────────────────────────────────────────────────────
+
+model Session {
+  id            String    @id
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt     DateTime
+  invalidatedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ─── Category ─────────────────────────────────────────────────────────────────
@@ -71,7 +104,7 @@ model Ticket {
   ticketNumber String @unique
 
   requesterId Int
-  requester   RequesterUser @relation("TicketRequester", fields: [requesterId], references: [id])
+  requester   User @relation("TicketRequester", fields: [requesterId], references: [id])
 
   categoryId      Int
   category        Category      @relation(fields: [categoryId], references: [id])
@@ -84,19 +117,24 @@ model Ticket {
   requestedPriority Priority     @default(MEDIUM)
   itPriority        Priority     @default(MEDIUM)
   currentStatus     TicketStatus @default(NEW)
+  requesterResolvedAt DateTime?
 
   ticketOwnerId Int?
-  ticketOwner   RequesterUser? @relation("TicketOwner", fields: [ticketOwnerId], references: [id])
+  ticketOwner   User? @relation("TicketOwner", fields: [ticketOwnerId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   attachments Attachment[]
+  publicComments PublicComment[]
+  internalNotes  InternalNote[]
 
   @@index([requesterId])
   @@index([currentStatus, categoryId, requestedPriority])
   @@index([createdAt])
   @@index([updatedAt])
+  @@index([ticketOwnerId])
+  @@index([currentStatus, updatedAt])
 }
 
 // ─── Attachment ───────────────────────────────────────────────────────────────
@@ -107,7 +145,7 @@ model Attachment {
   ticket   Ticket @relation(fields: [ticketId], references: [id])
 
   uploaderId Int
-  uploader   RequesterUser @relation("AttachmentUploader", fields: [uploaderId], references: [id])
+  uploader   User @relation("AttachmentUploader", fields: [uploaderId], references: [id])
 
   originalFilename String
   storedFilename   String
@@ -117,10 +155,38 @@ model Attachment {
 
   removedAt            DateTime?
   removedByRequesterId Int?
-  removedBy            RequesterUser? @relation("AttachmentRemover", fields: [removedByRequesterId], references: [id])
+  removedBy            User? @relation("AttachmentRemover", fields: [removedByRequesterId], references: [id])
   removalReason        String?
 
   createdAt DateTime @default(now())
 
   @@index([ticketId])
+}
+
+// ─── Lab 3 Ticket collaboration ────────────────────────────────────────────
+
+model PublicComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
 }
