@@ -86,7 +86,9 @@ async function main() {
 
     // Existing Lab 2 Requesters have no hash. Backfill them once; later seed
     // runs preserve a User-chosen password and its must-change state.
-    const needsPasswordBackfill = !existing?.passwordHash;
+    // Real E2E explicitly opts in to resetting only these deterministic fixture
+    // credentials. Normal seed runs preserve a user's chosen password.
+    const needsPasswordBackfill = !existing?.passwordHash || process.env.LAB3_RESET_E2E_FIXTURES === "true";
     const passwordFields = needsPasswordBackfill
       ? {
           passwordHash: await bcrypt.hash(initialPassword, 12),
