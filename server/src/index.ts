@@ -12,6 +12,7 @@ import { PrismaClient } from "../generated/prisma/client.js";
 import { generateTicketNumber } from './utils/ticketNumber.js';
 import { sanitizeStoredFilename } from './utils/fileSanitizer.js';
 import { validateSummary, validateDescription } from './utils/validation.js';
+import { registerActionRoutes } from './actions.js';
 
 const connectionString = `${process.env.DATABASE_URL}`;
 const pool = new Pool({ connectionString });
@@ -699,7 +700,7 @@ app.get('/api/tickets', requireAuthentication, requireRequester, async (req: Aut
 });
 
 // ─── GET /api/staff/tickets — IT Staff Queue ────────────────────────────────
-app.get('/api/staff/tickets', requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/staff/tickets', requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   const { search, status, requestedPriority, itPriority, ownerState, ownerId, sort = 'updatedAt', order = 'desc', page = '1', pageSize = '10' } = req.query;
   const priorities = ['LOW', 'MEDIUM', 'HIGH'];
   const statuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'];
@@ -771,7 +772,7 @@ function validateCommentContent(content: unknown) {
   return trimmed.length >= 1 && trimmed.length <= 2_000 ? trimmed : null;
 }
 
-app.get('/api/staff/owners', requireAuthentication, requireITStaff, async (_req: AuthenticatedRequest, res: Response) => {
+app.get('/api/staff/owners', requireAuthentication, requireStaffOrAdministrator, async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const owners = await prisma.user.findMany({ where: { role: 'IT_STAFF', isActive: true }, orderBy: [{ name: 'asc' }, { id: 'asc' }], select: { id: true, name: true, email: true } });
     return res.status(200).json({ success: true, data: owners });
@@ -780,7 +781,7 @@ app.get('/api/staff/owners', requireAuthentication, requireITStaff, async (_req:
   }
 });
 
-app.get('/api/staff/tickets/:ticketNumber', requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/staff/tickets/:ticketNumber', requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, include: staffTicketInclude });
     if (!ticket) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
@@ -1240,6 +1241,8 @@ app.delete('/api/attachments/:id', requireTrustedOrigin, requireAuthentication, 
     });
   }
 });
+
+registerActionRoutes(app, prisma, { authenticate: requireAuthentication, staff: requireStaffOrAdministrator, trustedOrigin: requireTrustedOrigin });
 
 // Start the server and wait for connections
 if (process.env.NODE_ENV !== 'test') {
