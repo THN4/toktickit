@@ -186,6 +186,45 @@ async function main() {
   }
   console.log(`  ✓ ${tickets.length} workflow tickets and ${collaborationFixtures.length} collaboration fixtures`);
 
+  // Lab 4 examples use stable retry IDs. Existing actions are never overwritten
+  // on later seed runs, and events are recorded only for newly inserted rows.
+  const actionFixtures = [
+    { ticketNumber: "TKT-L3-000002", requestId: "00000000-0000-4000-8000-000000000401", creator: "nina.patel@example.com", assignee: "owen.garcia@example.com", performer: null, actionAt: "2026-09-29T03:00:00.000Z", description: "Inspect application logs", result: null, status: "PLANNED" as const, followUpRequired: false, followUpNote: null, attachmentNotes: null, completedAt: null },
+    { ticketNumber: "TKT-L3-000002", requestId: "00000000-0000-4000-8000-000000000402", creator: "nina.patel@example.com", assignee: "nina.patel@example.com", performer: null, actionAt: "2026-09-29T04:00:00.000Z", description: "Reproduce blank screen in browser", result: null, status: "IN_PROGRESS" as const, followUpRequired: true, followUpNote: "Check client console after service restart", attachmentNotes: null, completedAt: null },
+    { ticketNumber: "TKT-L3-000003", requestId: "00000000-0000-4000-8000-000000000403", creator: "owen.garcia@example.com", assignee: "owen.garcia@example.com", performer: "owen.garcia@example.com", actionAt: "2026-09-28T02:00:00.000Z", description: "Collect battery diagnostics", result: "Battery health report collected", status: "COMPLETED" as const, followUpRequired: false, followUpNote: null, attachmentNotes: "Battery report attached to case", completedAt: "2026-09-28T02:20:00.000Z" },
+    { ticketNumber: "TKT-L3-000004", requestId: "00000000-0000-4000-8000-000000000404", creator: "priya.shah@example.com", assignee: null, performer: null, actionAt: "2026-09-27T02:00:00.000Z", description: "Duplicate VPN diagnostic appointment", result: null, status: "CANCELLED" as const, followUpRequired: false, followUpNote: null, attachmentNotes: null, completedAt: null },
+    { ticketNumber: "TKT-L3-000005", requestId: "00000000-0000-4000-8000-000000000405", creator: "nina.patel@example.com", assignee: "nina.patel@example.com", performer: "morgan.chen@example.com", actionAt: "2026-09-01T08:00:00.000Z", description: "Restore mailbox synchronization", result: "Mail delivery verified", status: "COMPLETED" as const, followUpRequired: false, followUpNote: null, attachmentNotes: null, completedAt: "2026-09-01T08:30:00.000Z" },
+  ];
+  for (const fixture of actionFixtures) {
+    const createdById = userId.get(fixture.creator)!;
+    const parentTicketId = ticketId.get(fixture.ticketNumber)!;
+    const where = { createdById_ticketId_clientRequestId: { createdById, ticketId: parentTicketId, clientRequestId: fixture.requestId } };
+    const existing = await prisma.actionTaken.findUnique({ where, select: { id: true } });
+    if (existing) continue;
+    const action = await prisma.actionTaken.create({ data: {
+      ticketId: parentTicketId,
+      clientRequestId: fixture.requestId,
+      createdById,
+      assigneeId: fixture.assignee ? userId.get(fixture.assignee)! : null,
+      performedById: fixture.performer ? userId.get(fixture.performer)! : null,
+      actionAt: new Date(fixture.actionAt),
+      description: fixture.description,
+      result: fixture.result,
+      status: fixture.status,
+      followUpRequired: fixture.followUpRequired,
+      followUpNote: fixture.followUpNote,
+      attachmentNotes: fixture.attachmentNotes,
+      completedAt: fixture.completedAt ? new Date(fixture.completedAt) : null,
+    } });
+    await prisma.actionTakenEvent.create({ data: {
+      actionTakenId: action.id,
+      actorId: createdById,
+      eventType: "CREATED",
+      next: { status: action.status, description: action.description, result: action.result, assigneeId: action.assigneeId },
+    } });
+  }
+  console.log(`  ✓ ${actionFixtures.length} stable Lab 4 action fixtures`);
+
   console.log("✅ Seeding finished.");
 }
 
