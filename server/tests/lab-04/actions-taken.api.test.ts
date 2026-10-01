@@ -130,4 +130,22 @@ describe('Lab 4 Actions Taken API', () => {
     expect(listed.body.data.items.map((item: { id: number }) => item.id)).toEqual([created.body.data.id, actionIds[0]]);
     expect(await prisma.actionTakenEvent.count({ where: { actionTakenId: created.body.data.id } })).toBe(2);
   });
+
+  it('handles concurrent duplicate creates and the IN_PROGRESS to CANCELLED edge', async () => {
+    const body = { clientRequestId: randomUUID(), actionAt: '2026-09-02T10:00:00+07:00', description: 'Check spare network adapter' };
+    const url = `/api/staff/tickets/${ticketNumber}/actions`;
+    const [a, b] = await Promise.all([
+      request(app).post(url).set('Cookie', cookie(sessions[2]!)).send(body),
+      request(app).post(url).set('Cookie', cookie(sessions[2]!)).send(body),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 201]);
+    expect(a.body.data.id).toBe(b.body.data.id);
+    actionIds.push(a.body.data.id);
+    const started = await request(app).patch(`/api/staff/actions/${a.body.data.id}/status`).set('Cookie', cookie(sessions[2]!)).send({ expectedVersion: 1, status: 'IN_PROGRESS' });
+    expect(started.status).toBe(200);
+    const cancelled = await request(app).patch(`/api/staff/actions/${a.body.data.id}/status`).set('Cookie', cookie(sessions[4]!)).send({ expectedVersion: 2, status: 'CANCELLED' });
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.body.data.version).toBe(3);
+    expect(await prisma.actionTakenEvent.count({ where: { actionTakenId: a.body.data.id } })).toBe(3);
+  });
 });
