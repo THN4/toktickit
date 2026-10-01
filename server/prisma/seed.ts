@@ -201,27 +201,36 @@ async function main() {
     const where = { createdById_ticketId_clientRequestId: { createdById, ticketId: parentTicketId, clientRequestId: fixture.requestId } };
     const existing = await prisma.actionTaken.findUnique({ where, select: { id: true } });
     if (existing) continue;
-    const action = await prisma.actionTaken.create({ data: {
-      ticketId: parentTicketId,
-      clientRequestId: fixture.requestId,
-      createdById,
-      assigneeId: fixture.assignee ? userId.get(fixture.assignee)! : null,
-      performedById: fixture.performer ? userId.get(fixture.performer)! : null,
-      actionAt: new Date(fixture.actionAt),
-      description: fixture.description,
-      result: fixture.result,
-      status: fixture.status,
-      followUpRequired: fixture.followUpRequired,
-      followUpNote: fixture.followUpNote,
-      attachmentNotes: fixture.attachmentNotes,
-      completedAt: fixture.completedAt ? new Date(fixture.completedAt) : null,
-    } });
-    await prisma.actionTakenEvent.create({ data: {
-      actionTakenId: action.id,
-      actorId: createdById,
-      eventType: "CREATED",
-      next: { status: action.status, description: action.description, result: action.result, assigneeId: action.assigneeId },
-    } });
+    await prisma.$transaction(async (tx) => {
+      const action = await tx.actionTaken.create({ data: {
+        ticketId: parentTicketId,
+        clientRequestId: fixture.requestId,
+        createdById,
+        assigneeId: fixture.assignee ? userId.get(fixture.assignee)! : null,
+        performedById: fixture.performer ? userId.get(fixture.performer)! : null,
+        actionAt: new Date(fixture.actionAt),
+        description: fixture.description,
+        result: fixture.result,
+        status: fixture.status,
+        followUpRequired: fixture.followUpRequired,
+        followUpNote: fixture.followUpNote,
+        attachmentNotes: fixture.attachmentNotes,
+        completedAt: fixture.completedAt ? new Date(fixture.completedAt) : null,
+      } });
+      await tx.actionTakenEvent.create({ data: {
+        actionTakenId: action.id,
+        actorId: createdById,
+        eventType: "CREATED",
+        next: {
+          actionAt: action.actionAt.toISOString(), description: action.description, result: action.result,
+          status: action.status, assigneeId: action.assigneeId, followUpRequired: action.followUpRequired,
+          followUpNote: action.followUpNote, attachmentNotes: action.attachmentNotes,
+          performedById: action.performedById, completedAt: action.completedAt?.toISOString() ?? null,
+          version: action.version,
+        },
+      } });
+      await tx.ticket.update({ where: { id: parentTicketId }, data: { version: { increment: 1 } } });
+    });
   }
   console.log(`  ✓ ${actionFixtures.length} stable Lab 4 action fixtures`);
 

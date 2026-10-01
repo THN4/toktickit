@@ -29,7 +29,7 @@ function bodyFields(body: unknown, allowed: readonly string[]) {
   return body;
 }
 function requiredVersion(value: unknown) { if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) bad('expectedVersion', 'A positive expectedVersion is required.'); return value; }
-function parseActionAt(value: unknown) {
+export function parseActionAt(value: unknown) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) bad('actionAt', 'actionAt must be an ISO-8601 timestamp with an offset.');
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) bad('actionAt', 'actionAt must be a valid timestamp.');
@@ -48,14 +48,14 @@ function optionalText(value: unknown, field: string, max: number) {
   return value.trim() || null;
 }
 function assigneeId(value: unknown) { if (value === null) return null; if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) bad('assigneeId', 'assigneeId must be an active IT Staff ID or null.'); return value; }
-function validateFields(fields: Fields, status: string) {
+export function validateFields(fields: Fields, status: string) {
   if (fields.followUpRequired && !fields.followUpNote) bad('followUpNote', 'followUpNote is required when followUpRequired is true.');
   if (status === 'COMPLETED') {
-    if (!fields.result) bad('result', 'result is required for a completed action.');
+    if (!fields.result?.trim()) bad('result', 'result is required for a completed action.');
     if (fields.actionAt.getTime() > Date.now() + 5 * 60_000) bad('actionAt', 'Completed actionAt cannot be more than five minutes in the future.');
   }
 }
-function createFields(body: Record<string, unknown>): Fields {
+export function createFields(body: Record<string, unknown>): Fields {
   const fields: Fields = {
     actionAt: parseActionAt(body.actionAt),
     description: textField(body.description, 'description', 2000)!,
@@ -68,7 +68,7 @@ function createFields(body: Record<string, unknown>): Fields {
   validateFields(fields, 'PLANNED');
   return fields;
 }
-function mergedFields(current: Fields, body: Record<string, unknown>): Fields {
+export function mergedFields(current: Fields, body: Record<string, unknown>): Fields {
   const fields: Fields = {
     actionAt: 'actionAt' in body ? parseActionAt(body.actionAt) : current.actionAt,
     description: 'description' in body ? textField(body.description, 'description', 2000)! : current.description,

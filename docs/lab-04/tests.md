@@ -6,14 +6,14 @@
 
 | ID | Type | AC / Rule | Scenario and expected result | Planned test file | Final |
 |---|---|---|---|---|---|
-| UNIT-01 | Unit | AC-03, AC-16/17 | Field lengths/date/conditional note, inactive assignee and Completed Result validation | `server/tests/lab-04/actions-taken.unit.test.ts` | Planned |
+| UNIT-01 | Unit | AC-03, AC-16/17 | Field lengths/date/conditional note and Completed Result validation; assignee role validation is covered by API-02 | `server/tests/lab-04/actions-taken.unit.test.ts` | Passed locally: 4 tests (2026-10-01) |
 | UNIT-02 | Unit | AC-06/08/17 | Full Ticket and Action transition matrices plus resolution gate | `server/tests/lab-04/ticket-workflow.unit.test.ts` | Planned |
-| API-01 | API/integration | AC-01/02/16 | Create under correct Ticket; creator/assignee/performer and owner may differ | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-02 | API/authorization | AC-03/04/16/20 | Invalid fields, inactive/non-staff assignee, forged actor, Requester ownership/write denial, Admin permission | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-03 | API/concurrency | AC-05/18 | Stale edit is 409; identical create retry yields one record; key reused with changed payload is 409 | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| API-01 | API/integration | AC-01/02/16 | Create under correct Ticket; creator/assignee/performer and owner may differ | `server/tests/lab-04/actions-taken.api.test.ts` | Implemented; DB run pending |
+| API-02 | API/authorization | AC-03/04/16/20 | Invalid fields, inactive/non-staff assignee, forged actor, Requester ownership/write denial, Admin permission | `server/tests/lab-04/actions-taken.api.test.ts` | Implemented; DB run pending |
+| API-03 | API/concurrency | AC-05/18 | Stale edit is 409; identical create retry yields one record; key reused with changed payload is 409 | `server/tests/lab-04/actions-taken.api.test.ts` | Implemented; DB run pending |
 | API-04 | API/workflow | AC-06/07/08/17 | Every allowed/denied Action/Ticket edge; resolution gate and advisory Requester indication | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | API-05 | API/concurrency | AC-05/08 | Stale Ticket claim/owner/priority/status update cannot overwrite newer state | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-06 | API/audit | AC-19 | Stable action/event order, no delete, append-only Public Comments/Internal Notes regression | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| API-06 | API/audit | AC-19 | Stable action/event order, no delete, append-only Public Comments/Internal Notes regression | `server/tests/lab-04/actions-taken.api.test.ts` | Action/event cases implemented; DB run pending; comment/note regression planned |
 | API-07 | API/dashboard | AC-09/11 | Requester-owned counts, UTC window boundaries, legacy null resolvedAt, empty lists and no foreign records | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
 | API-08 | API/dashboard | AC-10/11/20 | Staff/Admin counts by all statuses and LOW/MEDIUM/HIGH, current assignee and completed performer, high-priority, exact query comparison | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
 | API-09 | API/safe failure | AC-21 | Health, invalid input, unauthenticated, forbidden, not-found, conflict and safe 500 envelopes | `server/tests/lab-04/safe-failure.api.test.ts` | Planned |
