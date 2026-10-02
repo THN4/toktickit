@@ -40,6 +40,35 @@ beforeEach(() => {
 });
 
 describe("Lab 4 Actions Taken UI", () => {
+  it("keeps actions visible when assignees fail and retries only the assignee lookup", async () => {
+    vi.mocked(api.fetchActionAssignees).mockRejectedValueOnce(new Error("Assignee service unavailable")).mockResolvedValueOnce([{ id: 3, name: "Nina Patel" }]);
+    render(<ActionsTakenSection ticketNumber="TKT-L4-10" canManage />);
+    expect(await screen.findByText("Inspect application logs")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Assignee service unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Add Action Taken" }));
+    expect(screen.getByLabelText("Action assignee")).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry assignees" }));
+    await waitFor(() => expect(screen.getByLabelText("Action assignee")).toBeEnabled());
+    expect(within(screen.getByLabelText("Action assignee")).getByRole("option", { name: "Nina Patel" })).toBeInTheDocument();
+    expect(api.fetchActionsTaken).toHaveBeenCalledTimes(1);
+    expect(api.fetchActionAssignees).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Inspect application logs")).toBeInTheDocument();
+  });
+
+  it("refreshes actions after a save even if the assignee service is unavailable", async () => {
+    vi.mocked(api.fetchActionAssignees).mockRejectedValue(new Error("Assignee service unavailable"));
+    vi.mocked(api.createActionTaken).mockResolvedValue(action);
+    render(<ActionsTakenSection ticketNumber="TKT-L4-10" canManage />);
+    await screen.findByText("Inspect application logs");
+    fireEvent.click(screen.getByRole("button", { name: "Add Action Taken" }));
+    fireEvent.change(screen.getByLabelText("Action description"), { target: { value: "Repair connection" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save action" }));
+    expect(await screen.findByText("Action Taken added.")).toBeInTheDocument();
+    expect(screen.getByText("Inspect application logs")).toBeInTheDocument();
+    expect(api.fetchActionsTaken).toHaveBeenCalledTimes(2);
+    expect(api.fetchActionAssignees).toHaveBeenCalledTimes(1);
+  });
+
   it("shows all records to a Requester without staff controls or assignee lookup", async () => {
     vi.mocked(api.fetchActionsTaken).mockResolvedValue([action, { ...action, id: 11, status: "CANCELLED", description: "Superseded check" }]);
     render(<ActionsTakenSection ticketNumber="TKT-L4-10" />);

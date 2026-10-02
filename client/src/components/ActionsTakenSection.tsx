@@ -73,6 +73,8 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
   const [assignees, setAssignees] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [assigneeLoading, setAssigneeLoading] = useState(false);
+  const [assigneeError, setAssigneeError] = useState("");
   const [editor, setEditor] = useState<Editor | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -91,21 +93,36 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
   const statusLock = useRef(false);
 
   const reload = useCallback(async () => {
-    const [items, staff] = await Promise.all([fetchActionsTaken(ticketNumber), canManage ? fetchActionAssignees() : Promise.resolve([])]);
+    const items = await fetchActionsTaken(ticketNumber);
     setActions(items);
-    setAssignees(staff);
     return items;
-  }, [ticketNumber, canManage]);
+  }, [ticketNumber]);
+
+  const loadAssignees = useCallback(async () => {
+    if (!canManage) return;
+    setAssigneeLoading(true);
+    setAssigneeError("");
+    try {
+      setAssignees(await fetchActionAssignees());
+    } catch (error) {
+      setAssignees([]);
+      setAssigneeError(error instanceof Error ? error.message : "Unable to load active IT Staff assignees.");
+    } finally {
+      setAssigneeLoading(false);
+    }
+  }, [canManage]);
 
   useEffect(() => {
     let active = true;
     setLoading(true); setLoadError("");
-    Promise.all([fetchActionsTaken(ticketNumber), canManage ? fetchActionAssignees() : Promise.resolve([])])
-      .then(([items, staff]) => { if (active) { setActions(items); setAssignees(staff); } })
+    fetchActionsTaken(ticketNumber)
+      .then((items) => { if (active) setActions(items); })
       .catch((error) => { if (active) setLoadError(error instanceof Error ? error.message : "Unable to load actions."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [ticketNumber, canManage]);
+  }, [ticketNumber]);
+
+  useEffect(() => { void loadAssignees(); }, [loadAssignees]);
 
   useEffect(() => {
     if (!statusDialog) return;
@@ -222,6 +239,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
       {canManage && !editor && <button type="button" onClick={startCreate} className="min-h-11 rounded-lg bg-[#006B3C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#00532E]">Add Action Taken</button>}
     </div>
     {message && <p role="status" className="mt-3 rounded-lg bg-[#ECFDF3] p-3 text-sm text-[#166534]">{message}</p>}
+    {canManage && assigneeError && <div role="alert" className="mt-3 rounded-lg border border-[#EBCB86] bg-[#FFFBEB] p-3 text-sm text-[#7C4A03]"><p>Active IT Staff assignees could not load: {assigneeError}</p><button type="button" disabled={assigneeLoading} onClick={() => void loadAssignees()} className="mt-2 min-h-11 font-semibold underline disabled:opacity-50">Retry assignees</button></div>}
     {saveError && <div role="alert" className="mt-3 rounded-lg border border-[#F5B8B8] bg-[#FFF1F1] p-3 text-sm text-[#991B1B]"><p>{saveError}</p>{conflict && <button type="button" onClick={() => void reloadConflict()} className="mt-2 font-semibold underline">Reload current actions</button>}</div>}
     {loading ? <p role="status" className="mt-4 text-sm text-[#4A6355]">Loading actions…</p> : loadError ? <div role="alert" className="mt-4 rounded-lg bg-[#FFF1F1] p-3 text-sm text-[#991B1B]"><p>{loadError}</p><button type="button" onClick={() => { setLoading(true); setLoadError(""); void reload().catch((error) => setLoadError(error instanceof Error ? error.message : "Unable to load actions.")).finally(() => setLoading(false)); }} className="mt-2 font-semibold underline">Retry</button></div> : actions.length === 0 ? <p className="mt-4 rounded-lg bg-[#F0F4F1] p-4 text-sm text-[#4A6355]">No Actions Taken have been recorded for this ticket yet.</p> : <ol className="mt-4 space-y-4">{actions.map((action) => <li key={action.id} className="rounded-xl border border-[#D1E0D8] bg-[#FAFCFB] p-4">
       <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-[#4A6355]">Action date and time</p><time className="font-medium text-[#1A2E22]" dateTime={action.actionAt}>{formatDate(action.actionAt)}</time></div><span className={`rounded-full px-3 py-1 text-xs font-bold ${action.status === "COMPLETED" ? "bg-[#DCFCE7] text-[#166534]" : action.status === "CANCELLED" ? "bg-[#FEE2E2] text-[#991B1B]" : "bg-[#FEF3C7] text-[#92400E]"}`}>{actionLabel(action.status)}</span></div>
@@ -235,7 +253,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
       <p className="mt-1 text-xs text-[#4A6355]">Creator, performer, status and audit time are recorded by the system.</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-semibold text-[#294536]">Action date and time<input aria-label="Action date and time" aria-invalid={!!fieldErrors.actionAt} aria-describedby={fieldErrors.actionAt ? "action-at-error" : undefined} type="datetime-local" required value={draft.actionAt} onChange={(event) => changeDraft("actionAt", event.target.value)} className="min-h-11 rounded-lg border border-[#B8CEC0] bg-white px-3 py-2" />{fieldErrors.actionAt && <span id="action-at-error" className="text-xs text-[#991B1B]">{fieldErrors.actionAt}</span>}</label>
-        <label className="grid gap-1 text-sm font-semibold text-[#294536]">Assignee<select aria-label="Action assignee" value={draft.assigneeId} disabled={editor.kind === "edit" && actions.find((action) => action.id === editor.actionId)?.status === "COMPLETED"} onChange={(event) => changeDraft("assigneeId", event.target.value)} className="min-h-11 rounded-lg border border-[#B8CEC0] bg-white px-3 py-2"><option value="">Unassigned</option>{draft.assigneeId && !assignees.some((user) => String(user.id) === draft.assigneeId) && <option value={draft.assigneeId}>Current assignee (inactive)</option>}{assignees.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select>{fieldErrors.assigneeId && <span className="text-xs text-[#991B1B]">{fieldErrors.assigneeId}</span>}</label>
+        <label className="grid gap-1 text-sm font-semibold text-[#294536]">Assignee<select aria-label="Action assignee" value={draft.assigneeId} disabled={assigneeLoading || !!assigneeError || (editor.kind === "edit" && actions.find((action) => action.id === editor.actionId)?.status === "COMPLETED")} onChange={(event) => changeDraft("assigneeId", event.target.value)} className="min-h-11 rounded-lg border border-[#B8CEC0] bg-white px-3 py-2"><option value="">Unassigned</option>{draft.assigneeId && !assignees.some((user) => String(user.id) === draft.assigneeId) && <option value={draft.assigneeId}>Current assignee (inactive)</option>}{assignees.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select>{assigneeLoading && <span className="text-xs font-normal text-[#4A6355]">Loading active IT Staff…</span>}{assigneeError && <span className="text-xs font-normal text-[#7C4A03]">Assignment choices are unavailable. Retry the lookup above.</span>}{fieldErrors.assigneeId && <span className="text-xs text-[#991B1B]">{fieldErrors.assigneeId}</span>}</label>
         <label className="grid gap-1 text-sm font-semibold text-[#294536] sm:col-span-2">Description<textarea aria-label="Action description" aria-invalid={!!fieldErrors.description} aria-describedby={fieldErrors.description ? "action-description-error" : undefined} rows={3} maxLength={2000} value={draft.description} onChange={(event) => changeDraft("description", event.target.value)} className="rounded-lg border border-[#B8CEC0] bg-white p-3" />{fieldErrors.description && <span id="action-description-error" className="text-xs text-[#991B1B]">{fieldErrors.description}</span>}</label>
         <label className="grid gap-1 text-sm font-semibold text-[#294536] sm:col-span-2">Result<textarea aria-label="Action result" aria-invalid={!!fieldErrors.result} aria-describedby={fieldErrors.result ? "action-result-error" : undefined} rows={3} maxLength={2000} value={draft.result} onChange={(event) => changeDraft("result", event.target.value)} className="rounded-lg border border-[#B8CEC0] bg-white p-3" />{fieldErrors.result && <span id="action-result-error" className="text-xs text-[#991B1B]">{fieldErrors.result}</span>}</label>
         <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-[#294536] sm:col-span-2"><input aria-label="Follow-up required" type="checkbox" checked={draft.followUpRequired} onChange={(event) => changeDraft("followUpRequired", event.target.checked)} className="h-5 w-5" />Follow-up required?</label>
