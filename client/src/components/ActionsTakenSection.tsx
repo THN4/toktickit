@@ -87,6 +87,8 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
   const [statusError, setStatusError] = useState("");
   const [statusBusy, setStatusBusy] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const saveLock = useRef(false);
+  const statusLock = useRef(false);
 
   const reload = useCallback(async () => {
     const [items, staff] = await Promise.all([fetchActionsTaken(ticketNumber), canManage ? fetchActionAssignees() : Promise.resolve([])]);
@@ -146,11 +148,12 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
   };
 
   const save = async () => {
-    if (!editor || busy) return;
+    if (!editor || saveLock.current) return;
     const current = editor.kind === "edit" ? actions.find((action) => action.id === editor.actionId) : null;
     const errors = validateDraft(draft, current?.status === "COMPLETED");
     if (Object.keys(errors).length) { setFieldErrors(errors); return; }
     const input = toInput(draft);
+    saveLock.current = true;
     setBusy(true); setSaveError(""); setConflict(false); setMessage("");
     if (editor.kind === "create") setSubmittedCreate(true);
     try {
@@ -165,15 +168,16 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
       if (error instanceof ApiError && error.field) setFieldErrors((currentErrors) => ({ ...currentErrors, [error.field!]: error.message }));
       if (error instanceof ApiError && error.status === 409) setConflict(true);
       setSaveError(error instanceof Error ? error.message : "Unable to save the action. Your draft is still here.");
-    } finally { setBusy(false); }
+    } finally { saveLock.current = false; setBusy(false); }
   };
 
   const startAction = async (action: ActionTaken) => {
-    if (busy) return;
+    if (saveLock.current) return;
+    saveLock.current = true;
     setBusy(true); setMessage(""); setSaveError("");
     try { await updateActionStatus(action.id, action.version, "IN_PROGRESS"); await reload(); setMessage("Action started."); }
     catch (error) { setSaveError(error instanceof Error ? error.message : "Unable to start the action."); if (error instanceof ApiError && error.status === 409) setConflict(true); }
-    finally { setBusy(false); }
+    finally { saveLock.current = false; setBusy(false); }
   };
 
   const openStatus = (action: ActionTaken, status: StatusDialog["status"]) => {
@@ -182,13 +186,13 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
   };
 
   const confirmStatus = async () => {
-    if (!statusDialog || statusBusy) return;
+    if (!statusDialog || statusLock.current) return;
     if (statusDialog.status === "COMPLETED") {
       if (!completionResult.trim() || completionResult.trim().length > 2000) { setStatusError("Enter a result of 1–2,000 characters before completing."); return; }
       const time = new Date(completionAt);
       if (!completionAt || Number.isNaN(time.getTime()) || time.getTime() > Date.now() + 5 * 60_000) { setStatusError("Enter a valid work time no more than five minutes in the future."); return; }
     }
-    setStatusBusy(true); setStatusError("");
+    statusLock.current = true; setStatusBusy(true); setStatusError("");
     try {
       await updateActionStatus(statusDialog.action.id, statusDialog.action.version, statusDialog.status,
         statusDialog.status === "COMPLETED" ? { result: completionResult.trim(), actionAt: new Date(completionAt).toISOString() } : {});
@@ -196,7 +200,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
       setStatusDialog(null); setMessage(statusDialog.status === "COMPLETED" ? "Action completed." : "Action cancelled.");
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : "Unable to change action status.");
-    } finally { setStatusBusy(false); }
+    } finally { statusLock.current = false; setStatusBusy(false); }
   };
 
   const reloadConflict = async () => {
