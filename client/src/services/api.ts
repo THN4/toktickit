@@ -160,6 +160,37 @@ export interface StaffTicketDetail extends TicketDetail {
   internalNotes: TicketComment[];
 }
 
+export type ActionStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+export interface ActionTaken {
+  id: number;
+  ticketNumber: string;
+  actionAt: string;
+  description: string;
+  result: string | null;
+  status: ActionStatus;
+  assignee: { id: number; name: string } | null;
+  createdBy: { id: number; name: string };
+  performedBy: { id: number; name: string } | null;
+  completedAt: string | null;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionDraftInput {
+  actionAt: string;
+  description: string;
+  result: string | null;
+  assigneeId: number | null;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+}
+
 export interface Pagination {
   page: number;
   pageSize: number;
@@ -308,6 +339,28 @@ async function ticketApiRequest<T>(path: string, init?: RequestInit): Promise<T>
 
 export function fetchStaffTicketDetail(ticketNumber: string): Promise<StaffTicketDetail> {
   return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}`);
+}
+
+export async function fetchActionsTaken(ticketNumber: string): Promise<ActionTaken[]> {
+  const data = await ticketApiRequest<{ items: ActionTaken[] }>(`/tickets/${encodeURIComponent(ticketNumber)}/actions`);
+  return data.items;
+}
+
+export async function fetchActionAssignees(): Promise<Array<{ id: number; name: string }>> {
+  const data = await ticketApiRequest<{ items: Array<{ id: number; name: string }> }>("/staff/action-assignees");
+  return data.items;
+}
+
+export function createActionTaken(ticketNumber: string, clientRequestId: string, input: ActionDraftInput): Promise<ActionTaken> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/actions`, { method: "POST", body: JSON.stringify({ clientRequestId, ...input }) });
+}
+
+export function updateActionTaken(id: number, expectedVersion: number, input: Partial<ActionDraftInput>): Promise<ActionTaken> {
+  return ticketApiRequest(`/staff/actions/${id}`, { method: "PATCH", body: JSON.stringify({ expectedVersion, ...input }) });
+}
+
+export function updateActionStatus(id: number, expectedVersion: number, status: Exclude<ActionStatus, "PLANNED">, fields: { result?: string; actionAt?: string } = {}): Promise<ActionTaken> {
+  return ticketApiRequest(`/staff/actions/${id}/status`, { method: "PATCH", body: JSON.stringify({ expectedVersion, status, ...fields }) });
 }
 
 export function fetchStaffOwners(): Promise<StaffOwner[]> {
