@@ -154,6 +154,8 @@ export interface StaffOwner {
 }
 
 export interface StaffTicketDetail extends TicketDetail {
+  version: number;
+  resolvedAt: string | null;
   requester: StaffOwner;
   ticketOwner: StaffOwner | null;
   publicComments: TicketComment[];
@@ -367,20 +369,20 @@ export function fetchStaffOwners(): Promise<StaffOwner[]> {
   return ticketApiRequest("/staff/owners");
 }
 
-export function claimStaffTicket(ticketNumber: string): Promise<StaffTicketDetail> {
-  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/claim`, { method: "POST" });
+export function claimStaffTicket(ticketNumber: string, expectedVersion: number): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/claim`, { method: "POST", body: JSON.stringify({ expectedVersion }) });
 }
 
-export function updateTicketOwner(ticketNumber: string, ownerId: number | null): Promise<StaffTicketDetail> {
-  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/owner`, { method: "PATCH", body: JSON.stringify({ ownerId }) });
+export function updateTicketOwner(ticketNumber: string, ownerId: number | null, expectedVersion: number): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/owner`, { method: "PATCH", body: JSON.stringify({ ownerId, expectedVersion }) });
 }
 
-export function updateItPriority(ticketNumber: string, itPriority: TicketPriority): Promise<StaffTicketDetail> {
-  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/it-priority`, { method: "PATCH", body: JSON.stringify({ itPriority }) });
+export function updateItPriority(ticketNumber: string, itPriority: TicketPriority, expectedVersion: number): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/it-priority`, { method: "PATCH", body: JSON.stringify({ itPriority, expectedVersion }) });
 }
 
-export function updateFormalStatus(ticketNumber: string, status: FormalStatus, confirmed = false): Promise<StaffTicketDetail> {
-  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/status`, { method: "PATCH", body: JSON.stringify({ status, confirmed }) });
+export function updateFormalStatus(ticketNumber: string, status: FormalStatus, expectedVersion: number, confirmed = false): Promise<StaffTicketDetail> {
+  return ticketApiRequest(`/staff/tickets/${encodeURIComponent(ticketNumber)}/status`, { method: "PATCH", body: JSON.stringify({ status, expectedVersion, confirmed }) });
 }
 
 export function recordRequesterResolution(ticketNumber: string): Promise<{ ticketNumber: string; currentStatus: FormalStatus; requesterResolvedAt: string }> {

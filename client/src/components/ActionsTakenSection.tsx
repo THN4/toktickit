@@ -68,7 +68,7 @@ function toInput(draft: Draft): ActionDraftInput {
   };
 }
 
-export default function ActionsTakenSection({ ticketNumber, canManage = false }: { ticketNumber: string; canManage?: boolean }) {
+export default function ActionsTakenSection({ ticketNumber, canManage = false, onChanged }: { ticketNumber: string; canManage?: boolean; onChanged?: () => void }) {
   const [actions, setActions] = useState<ActionTaken[]>([]);
   const [assignees, setAssignees] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -180,6 +180,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
         await updateActionTaken(editor.actionId, editor.expectedVersion, current?.status === "COMPLETED" ? corrections : { ...corrections, assigneeId });
       }
       await reload();
+      onChanged?.();
       setEditor(null); setMessage(editor.kind === "create" ? "Action Taken added." : "Action Taken updated.");
     } catch (error) {
       if (error instanceof ApiError && error.field) setFieldErrors((currentErrors) => ({ ...currentErrors, [error.field!]: error.message }));
@@ -192,7 +193,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
     if (saveLock.current) return;
     saveLock.current = true;
     setBusy(true); setMessage(""); setSaveError("");
-    try { await updateActionStatus(action.id, action.version, "IN_PROGRESS"); await reload(); setMessage("Action started."); }
+    try { await updateActionStatus(action.id, action.version, "IN_PROGRESS"); await reload(); onChanged?.(); setMessage("Action started."); }
     catch (error) { setSaveError(error instanceof Error ? error.message : "Unable to start the action."); if (error instanceof ApiError && error.status === 409) setConflict(true); }
     finally { saveLock.current = false; setBusy(false); }
   };
@@ -214,6 +215,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false }:
       await updateActionStatus(statusDialog.action.id, statusDialog.action.version, statusDialog.status,
         statusDialog.status === "COMPLETED" ? { result: completionResult.trim(), actionAt: new Date(completionAt).toISOString() } : {});
       await reload();
+      onChanged?.();
       setStatusDialog(null); setMessage(statusDialog.status === "COMPLETED" ? "Action completed." : "Action cancelled.");
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : "Unable to change action status.");

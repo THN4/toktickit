@@ -27,6 +27,8 @@ const baseTicket: api.StaffTicketDetail = {
   requestedPriority: "HIGH",
   itPriority: "MEDIUM",
   currentStatus: "NEW",
+  version: 1,
+  resolvedAt: null,
   summary: "Cannot connect to VPN",
   description: "Connection drops immediately.",
   createdAt: "2026-09-01T08:00:00.000Z",
@@ -79,7 +81,7 @@ describe("Lab 3 Staff Ticket Detail UI", () => {
 
     vi.mocked(api.claimStaffTicket).mockResolvedValue({ ...baseTicket, ticketOwner: owners[0] });
     fireEvent.click(screen.getByRole("button", { name: "Claim" }));
-    await waitFor(() => expect(api.claimStaffTicket).toHaveBeenCalledWith(baseTicket.ticketNumber));
+    await waitFor(() => expect(api.claimStaffTicket).toHaveBeenCalledWith(baseTicket.ticketNumber, 1));
     expect(await screen.findByRole("status")).toHaveTextContent("Ticket claimed.");
   });
 
@@ -94,13 +96,13 @@ describe("Lab 3 Staff Ticket Detail UI", () => {
     fireEvent.change(screen.getByLabelText("Ticket owner"), { target: { value: String(owners[1].id) } });
     expect(screen.getByRole("dialog")).toHaveTextContent("Set TKT-2026-000007 owner to Owen Garcia?");
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    await waitFor(() => expect(api.updateTicketOwner).toHaveBeenCalledWith(baseTicket.ticketNumber, owners[1].id));
+    await waitFor(() => expect(api.updateTicketOwner).toHaveBeenCalledWith(baseTicket.ticketNumber, owners[1].id, 1));
 
     fireEvent.change(screen.getByLabelText("Formal status"), { target: { value: "RESOLVED" } });
     fireEvent.click(screen.getByRole("button", { name: "Update status" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("Change TKT-2026-000007 to RESOLVED?");
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    await waitFor(() => expect(api.updateFormalStatus).toHaveBeenCalledWith(baseTicket.ticketNumber, "RESOLVED", true));
+    await waitFor(() => expect(api.updateFormalStatus).toHaveBeenCalledWith(baseTicket.ticketNumber, "RESOLVED", 1, true));
   });
 
   it("posts public comments and internal notes without mixing their timelines", async () => {
@@ -127,6 +129,6 @@ describe("Lab 3 Staff Ticket Detail UI", () => {
     expect(screen.getByRole("button", { name: "Add Action Taken" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Public comment")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Internal note")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Formal status")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Formal status")).toBeInTheDocument();
   });
 });

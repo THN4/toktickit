@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import request from 'supertest';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -62,6 +62,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await prisma.actionTakenEvent.deleteMany({ where: { actionTaken: { ticketId: { in: ticketIds } } } });
+  await prisma.actionTaken.deleteMany({ where: { ticketId: { in: ticketIds } } });
   await prisma.internalNote.deleteMany({ where: { ticketId: { in: ticketIds } } });
   await prisma.publicComment.deleteMany({ where: { ticketId: { in: ticketIds } } });
   await prisma.ticket.deleteMany({ where: { id: { in: ticketIds } } });
@@ -85,35 +87,39 @@ describe('Lab 3 IT Staff Ticket Operations API', () => {
     expect(detail.body.data).toMatchObject({ requester: { id: requesterId }, ticketOwner: null, publicComments: [], internalNotes: [] });
     expect((await request(app).get(`/api/staff/tickets/${workflowTicketNumber}`).set('Cookie', cookie(requesterSession))).status).toBe(403);
 
-    const claim = await request(app).post(`/api/staff/tickets/${workflowTicketNumber}/claim`).set('Cookie', cookie(staffSession));
+    const claim = await request(app).post(`/api/staff/tickets/${workflowTicketNumber}/claim`).set('Cookie', cookie(staffSession)).send({ expectedVersion: detail.body.data.version });
     expect(claim.status).toBe(200);
     expect(claim.body.data.ticketOwner).toMatchObject({ id: staffId });
-    expect((await request(app).post(`/api/staff/tickets/${workflowTicketNumber}/claim`).set('Cookie', cookie(secondStaffSession))).status).toBe(409);
+    expect((await request(app).post(`/api/staff/tickets/${workflowTicketNumber}/claim`).set('Cookie', cookie(secondStaffSession)).send({ expectedVersion: claim.body.data.version })).status).toBe(409);
 
-    const assignment = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/owner`).set('Cookie', cookie(staffSession)).send({ ownerId: secondStaffId });
+    const assignment = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/owner`).set('Cookie', cookie(staffSession)).send({ ownerId: secondStaffId, expectedVersion: claim.body.data.version });
     expect(assignment.status).toBe(200);
     expect(assignment.body.data.ticketOwner).toMatchObject({ id: secondStaffId });
-    const invalidOwner = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/owner`).set('Cookie', cookie(staffSession)).send({ ownerId: administratorId });
+    const invalidOwner = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/owner`).set('Cookie', cookie(staffSession)).send({ ownerId: administratorId, expectedVersion: assignment.body.data.version });
     expect(invalidOwner.status).toBe(400);
-    const unassign = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/owner`).set('Cookie', cookie(staffSession)).send({ ownerId: null });
+    const unassign = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/owner`).set('Cookie', cookie(staffSession)).send({ ownerId: null, expectedVersion: assignment.body.data.version });
     expect(unassign.status).toBe(200);
     expect(unassign.body.data.ticketOwner).toBeNull();
 
-    const priority = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/it-priority`).set('Cookie', cookie(staffSession)).send({ itPriority: 'HIGH' });
+    const priority = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/it-priority`).set('Cookie', cookie(staffSession)).send({ itPriority: 'HIGH', expectedVersion: unassign.body.data.version });
     expect(priority.status).toBe(200);
     expect(priority.body.data.itPriority).toBe('HIGH');
   });
 
   it('enforces the formal status transition matrix and confirmation rule', async () => {
-    const invalid = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'RESOLVED', confirmed: true });
+    const current = await prisma.ticket.findUniqueOrThrow({ where: { ticketNumber: workflowTicketNumber } });
+    const invalid = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'RESOLVED', confirmed: true, expectedVersion: current.version });
     expect(invalid.status).toBe(409);
 
-    expect((await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'OPEN' })).status).toBe(200);
-    expect((await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'IN_PROGRESS' })).status).toBe(200);
-    const confirmationRequired = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'RESOLVED' });
+    const opened = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'OPEN', expectedVersion: current.version });
+    expect(opened.status).toBe(200);
+    const started = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'IN_PROGRESS', expectedVersion: opened.body.data.version });
+    expect(started.status).toBe(200);
+    const confirmationRequired = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'RESOLVED', expectedVersion: started.body.data.version });
     expect(confirmationRequired.status).toBe(400);
     expect(confirmationRequired.body.error.code).toBe('CONFIRMATION_REQUIRED');
-    const resolved = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'RESOLVED', confirmed: true });
+    await prisma.actionTaken.create({ data: { ticketId: current.id, clientRequestId: randomUUID(), actionAt: new Date(), description: 'Restored service', result: 'Working', status: 'COMPLETED', createdById: staffId, performedById: staffId, completedAt: new Date(), followUpRequired: false } });
+    const resolved = await request(app).patch(`/api/staff/tickets/${workflowTicketNumber}/status`).set('Cookie', cookie(staffSession)).send({ status: 'RESOLVED', confirmed: true, expectedVersion: started.body.data.version });
     expect(resolved.status).toBe(200);
     expect(resolved.body.data.currentStatus).toBe('RESOLVED');
   });
