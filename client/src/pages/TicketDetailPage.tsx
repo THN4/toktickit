@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
+import ActionsTakenSection from "../components/ActionsTakenSection";
 import {
   fetchTicketDetail,
   uploadAttachment,
@@ -301,6 +302,8 @@ export default function TicketDetailPage() {
               </div>
             </div>
           </div>
+
+          <ActionsTakenSection ticketNumber={ticket.ticketNumber} />
 
           {/* ─── Public Comments ──────────────────────────────────────────── */}
           <section className="bg-white rounded-xl border border-[#D1E0D8] p-6 shadow-sm">

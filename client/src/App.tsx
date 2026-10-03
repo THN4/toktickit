@@ -49,8 +49,9 @@ function RequesterRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 function Forbidden() { return <main className="max-w-xl mx-auto p-8 text-center"><h1 className="text-2xl font-bold text-[#1A2E22]">Forbidden</h1><p className="mt-2 text-[#4A6355]">You do not have permission to access this page.</p></main>; }
-function StaffRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'IT_STAFF' ? <>{children}</> : <Forbidden />; }
 function AdminRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'ADMINISTRATOR' ? <>{children}</> : <Forbidden />; }
+function OperationalRoute({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR' ? <>{children}</> : <Forbidden />; }
+function OperationalTicketDetail() { const { user } = useAuth(); return <StaffTicketDetailPage role={user?.role === 'ADMINISTRATOR' ? 'ADMINISTRATOR' : 'IT_STAFF'} />; }
 
 // ─── App shell layout ─────────────────────────────────────────────────────────
 
@@ -79,8 +80,8 @@ function AppShell() {
             </RequesterRoute>
           } />
 
-          <Route path="/staff/tickets" element={<StaffRoute><StaffQueuePage /></StaffRoute>} />
-          <Route path="/staff/tickets/:ticketNumber" element={<StaffRoute><StaffTicketDetailPage /></StaffRoute>} />
+          <Route path="/staff/tickets" element={<OperationalRoute><StaffQueuePage /></OperationalRoute>} />
+          <Route path="/staff/tickets/:ticketNumber" element={<OperationalRoute><OperationalTicketDetail /></OperationalRoute>} />
           <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
         </Routes>
       </main>

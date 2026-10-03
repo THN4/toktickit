@@ -11,6 +11,8 @@ vi.mock("../../src/services/api", async () => ({
   createPublicComment: vi.fn(),
   fetchStaffOwners: vi.fn(),
   fetchStaffTicketDetail: vi.fn(),
+  fetchActionsTaken: vi.fn(),
+  fetchActionAssignees: vi.fn(),
   updateFormalStatus: vi.fn(),
   updateItPriority: vi.fn(),
   updateTicketOwner: vi.fn(),
@@ -44,8 +46,8 @@ const owners: api.StaffOwner[] = [
   { id: 12, name: "Owen Garcia", email: "owen@example.test" },
 ];
 
-function renderPage() {
-  return render(<MemoryRouter initialEntries={["/staff/tickets/TKT-2026-000007"]}><Routes><Route path="/staff/tickets/:ticketNumber" element={<StaffTicketDetailPage />} /></Routes></MemoryRouter>);
+function renderPage(role: "IT_STAFF" | "ADMINISTRATOR" = "IT_STAFF") {
+  return render(<MemoryRouter initialEntries={["/staff/tickets/TKT-2026-000007"]}><Routes><Route path="/staff/tickets/:ticketNumber" element={<StaffTicketDetailPage role={role} />} /></Routes></MemoryRouter>);
 }
 
 describe("Lab 3 Staff Ticket Detail UI", () => {
@@ -60,6 +62,8 @@ describe("Lab 3 Staff Ticket Detail UI", () => {
     vi.mocked(api.createInternalNote).mockReset();
     vi.mocked(api.fetchStaffTicketDetail).mockResolvedValue(baseTicket);
     vi.mocked(api.fetchStaffOwners).mockResolvedValue(owners);
+    vi.mocked(api.fetchActionsTaken).mockReset().mockResolvedValue([]);
+    vi.mocked(api.fetchActionAssignees).mockReset().mockResolvedValue([]);
   });
 
   it("shows read-only ticket data, permitted transitions, and the Claim action", async () => {
@@ -114,5 +118,15 @@ describe("Lab 3 Staff Ticket Detail UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Post internal note" }));
     await waitFor(() => expect(api.createInternalNote).toHaveBeenCalledWith(baseTicket.ticketNumber, "Private diagnosis"));
     expect(screen.getByText("Private diagnosis")).toBeInTheDocument();
+  });
+
+  it("shows operational Actions Taken to Administrator without comment or note writing", async () => {
+    renderPage("ADMINISTRATOR");
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Cannot connect to VPN" })).toBeInTheDocument());
+    expect(await screen.findByRole("heading", { name: "Actions Taken" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Action Taken" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Public comment")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Internal note")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Formal status")).not.toBeInTheDocument();
   });
 });
