@@ -699,6 +699,68 @@ app.get('/api/tickets', requireAuthentication, requireRequester, async (req: Aut
   }
 });
 
+// ─── Lab 4 role dashboards ──────────────────────────────────────────────────
+const dashboardStatuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'] as const;
+const dashboardPriorities = ['LOW', 'MEDIUM', 'HIGH'] as const;
+const nonTerminalStatuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'REOPENED'] as const;
+const dashboardTicketSelect = { ticketNumber: true, summary: true, currentStatus: true, itPriority: true, updatedAt: true, resolvedAt: true, requesterResolvedAt: true } as const;
+const staffDashboardTicketSelect = { ticketNumber: true, summary: true, currentStatus: true, itPriority: true, updatedAt: true, ticketOwner: { select: { id: true, name: true } } } as const;
+const dashboardActionSelect = { id: true, status: true, description: true, assignee: { select: { id: true, name: true } }, performedBy: { select: { id: true, name: true } }, actionAt: true, completedAt: true, updatedAt: true, ticket: { select: { ticketNumber: true } } } as const;
+const recentWindow = (now: Date) => ({ gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), lte: now });
+
+app.get('/api/requester/dashboard', requireAuthentication, requireRequester, async (req: AuthenticatedRequest, res: Response) => {
+  if (Object.keys(req.query).length) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Dashboard query parameters are not supported.' } });
+  try {
+    const requesterId = req.auth!.user.id;
+    const window = recentWindow(new Date());
+    const owned = { requesterId };
+    const open = { requesterId, currentStatus: { in: [...nonTerminalStatuses] } };
+    const resolved = { requesterId, currentStatus: 'RESOLVED' as const, resolvedAt: window };
+    const [openTickets, waitingForRequester, recentlyUpdated, recentlyResolved, waiting, indicated, recentTickets, recentlyResolvedTickets] = await Promise.all([
+      prisma.ticket.count({ where: open }),
+      prisma.ticket.count({ where: { ...owned, currentStatus: 'WAITING_FOR_REQUESTER' } }),
+      prisma.ticket.count({ where: { ...owned, updatedAt: window } }),
+      prisma.ticket.count({ where: resolved }),
+      prisma.ticket.findMany({ where: { ...owned, currentStatus: 'WAITING_FOR_REQUESTER' }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+      prisma.ticket.findMany({ where: { ...open, currentStatus: { in: nonTerminalStatuses.filter((status) => status !== 'WAITING_FOR_REQUESTER') }, requesterResolvedAt: { not: null } }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+      prisma.ticket.findMany({ where: owned, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+      prisma.ticket.findMany({ where: resolved, orderBy: [{ resolvedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+    ]);
+    return res.status(200).json({ success: true, data: { metrics: { openTickets, waitingForRequester, recentlyUpdated, recentlyResolved }, attentionTickets: [...waiting, ...indicated].slice(0, 5), recentTickets, recentlyResolvedTickets } });
+  } catch {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to fetch Requester dashboard.' } });
+  }
+});
+
+app.get('/api/staff/dashboard', requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
+  if (Object.keys(req.query).length) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Dashboard query parameters are not supported.' } });
+  try {
+    const userId = req.auth!.user.id;
+    const window = recentWindow(new Date());
+    const active = { currentStatus: { in: [...nonTerminalStatuses] } };
+    const [unassignedTickets, myOwnedTickets, statusGroups, priorityGroups, recentlyUpdated, myAssignedActions, myCompletedActions30d, recentTickets, highPriorityTickets, myAssignedActionItems, recentMyCompletedActions] = await Promise.all([
+      prisma.ticket.count({ where: { ...active, ticketOwnerId: null } }),
+      prisma.ticket.count({ where: { ...active, ticketOwnerId: userId } }),
+      prisma.ticket.groupBy({ by: ['currentStatus'], _count: { _all: true } }),
+      prisma.ticket.groupBy({ by: ['itPriority'], where: active, _count: { _all: true } }),
+      prisma.ticket.count({ where: { updatedAt: window } }),
+      prisma.actionTaken.count({ where: { assigneeId: userId, status: { in: ['PLANNED', 'IN_PROGRESS'] } } }),
+      prisma.actionTaken.count({ where: { performedById: userId, status: 'COMPLETED', completedAt: window } }),
+      prisma.ticket.findMany({ where: { updatedAt: window }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: staffDashboardTicketSelect }),
+      prisma.ticket.findMany({ where: { ...active, itPriority: 'HIGH' }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: staffDashboardTicketSelect }),
+      prisma.actionTaken.findMany({ where: { assigneeId: userId, status: { in: ['PLANNED', 'IN_PROGRESS'] } }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: 5, select: dashboardActionSelect }),
+      prisma.actionTaken.findMany({ where: { performedById: userId, status: 'COMPLETED', completedAt: window }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: 5, select: dashboardActionSelect }),
+    ]);
+    const byStatus = Object.fromEntries(dashboardStatuses.map((status) => [status, statusGroups.find((row) => row.currentStatus === status)?._count._all ?? 0]));
+    const byItPriority = Object.fromEntries(dashboardPriorities.map((priority) => [priority, priorityGroups.find((row) => row.itPriority === priority)?._count._all ?? 0]));
+    const flattenAction = (action: (typeof myAssignedActionItems)[number]) => ({ ...action, ticketNumber: action.ticket.ticketNumber, ticket: undefined });
+    const isStaff = req.auth!.user.role === 'IT_STAFF';
+    return res.status(200).json({ success: true, data: { metrics: { unassignedTickets, myOwnedTickets: isStaff ? myOwnedTickets : 0, byStatus, byItPriority, recentlyUpdated, myAssignedActions: isStaff ? myAssignedActions : 0, myCompletedActions30d }, recentTickets, highPriorityTickets, myAssignedActionItems: isStaff ? myAssignedActionItems.map(flattenAction) : [], recentMyCompletedActions: recentMyCompletedActions.map(flattenAction) } });
+  } catch {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to fetch Staff dashboard.' } });
+  }
+});
+
 // ─── GET /api/staff/tickets — IT Staff Queue ────────────────────────────────
 app.get('/api/staff/tickets', requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   const { search, status, requestedPriority, itPriority, ownerState, ownerId, sort = 'updatedAt', order = 'desc', page = '1', pageSize = '10' } = req.query;
