@@ -14,14 +14,14 @@
 | API-04 | API/workflow | AC-06/07/08/17 | Every allowed/denied Action/Ticket edge; resolution gate and advisory Requester indication | `server/tests/lab-04/ticket-workflow.api.test.ts`; Lab 3 requester-indication regression | Ticket edges, gate and advisory case passed locally (2026-10-03); real E2E remains planned |
 | API-05 | API/concurrency | AC-05/08 | Stale Ticket claim/owner/priority/status update cannot overwrite newer state | `server/tests/lab-04/ticket-workflow.api.test.ts` | Passed locally (2026-10-03) |
 | API-06 | API/audit | AC-19 | Stable action/event order, no delete, append-only Public Comments/Internal Notes regression | `server/tests/lab-04/actions-taken.api.test.ts`; Lab 3 regression suite | Passed locally (2026-10-01) |
-| API-07 | API/dashboard | AC-09/11 | Requester-owned counts, UTC window boundaries, legacy null resolvedAt, empty lists and no foreign records | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-08 | API/dashboard | AC-10/11/20 | Staff/Admin counts by all statuses and LOW/MEDIUM/HIGH, current assignee and completed performer, high-priority, exact query comparison | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| API-07 | API/dashboard | AC-09/11 | Requester-owned counts, UTC 30-day exclusion, legacy null resolvedAt, empty lists and no foreign records | `server/tests/lab-04/requester-dashboard.api.test.ts` | Passed locally (2026-10-05); exact boundary instant remains for final hardening |
+| API-08 | API/dashboard | AC-10/11/20 | Staff/Admin counts by all statuses and LOW/MEDIUM/HIGH, current assignee and completed performer, high-priority, exact query comparison | `server/tests/lab-04/staff-dashboard.api.test.ts` | Passed locally (2026-10-05) |
 | API-09 | API/safe failure | AC-21 | Health, invalid input, unauthenticated, forbidden, not-found, conflict and safe 500 envelopes | `server/tests/lab-04/safe-failure.api.test.ts` | Planned |
 | MIG-01 | Migration/regression | AC-12 | Migrate representative Lab 3 copy and clean DB; preserve row counts, FKs, ownership and zero-action legacy Tickets | `server/tests/lab-04/migration.regression.test.ts` | Existing local DB migrated; legacy links/nullable resolvedAt/zero-action case passed; separate clean/copy runs pending |
 | MIG-02 | Seed | AC-13 | Run seed twice; stable IDs/rows and zero/non-zero dashboard fixtures | `server/tests/lab-04/migration.regression.test.ts` | Seed run twice and stable action keys/rows checked locally; dashboard metric checks remain in API-07/08 |
 | UI-01 | UI component | AC-01/03/04/05/16/17/18/19 | Action list/create/edit/assign/start/complete/cancel/read-only, validation, retry, conflict, audit | `client/tests/lab-04/ActionsTaken.test.tsx`; `client/tests/lab-03/StaffTicketDetail.test.tsx` | Component cases passed locally (2026-10-02); browser visual and real E2E evidence pending |
-| UI-02 | UI component | AC-09/11 | Requester cards/lists, owned detail links, My Tickets URL filter initialization, zero/empty/failure states | `client/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
-| UI-03 | UI component | AC-10/11/20 | Staff/Admin metrics, current-user actions, Queue URL filter initialization, empty/forbidden/failure states | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
+| UI-02 | UI component | AC-09/11 | Requester cards/lists, owned detail links, My Tickets URL filter initialization, zero/empty/failure states | `client/tests/lab-04/RequesterDashboard.test.tsx` | Component tests passed locally (2026-10-05); real browser checks pending |
+| UI-03 | UI component | AC-10/11/20 | Staff/Admin metrics, current-user actions, Queue URL filter initialization, empty/forbidden/failure states | `client/tests/lab-04/StaffDashboard.test.tsx` | Component tests passed locally (2026-10-05); direct-route role guard and browser checks pending |
 | UI-04 | UI component | AC-06/07/08/21 | Permitted Ticket transitions, resolve guidance, confirm, status refresh and preserved draft on conflict | `client/tests/lab-04/TicketWorkflow.test.tsx` | Component cases passed locally (2026-10-03); real browser accessibility/E2E pending |
 | STYLE-01 | UI style | AC-14 | Zen Green components, text-labelled badges, focus and error placement | `client/tests/lab-04/Lab4Styles.test.tsx` | Planned |
 | RESP-01 | Responsive/visual | AC-14 | Dashboard and Actions desktop/tablet/mobile; no clipping, overlap or page overflow | `e2e/lab-04/responsive.spec.ts` | Planned |
@@ -30,7 +30,7 @@
 | E2E-01 | Real E2E | AC-01/02/04/16/17/18 | Browser→real API→PostgreSQL create/assign/complete/cancel; Requester reads all owned actions | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
 | E2E-02 | Real E2E | AC-06/07/08/19 | Resolution blocked/unblocked, closure/cancellation/reopening, advisory indication, status/audit ordering | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
 | E2E-03 | Real E2E | AC-09/10/11/20 | Both dashboards, DB-aligned metrics, drill-down, ownership, Admin access | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| REG-01 | Labs 1–3 regression | AC-15/19/20/21 | Authentication, ownership, My Tickets, Ticket Detail, Attachments, Public Comments, Internal Notes, staff operations, User Management | Existing Lab 1–3 suites; record actual paths/commands | Local full suites passed on workflow branch: server 50/50, client 48/48 (2026-10-03); final staging/main runs pending |
+| REG-01 | Labs 1–3 regression | AC-15/19/20/21 | Authentication, ownership, My Tickets, Ticket Detail, Attachments, Public Comments, Internal Notes, staff operations, User Management | Existing Lab 1–3 suites; record actual paths/commands | Local full suites passed on dashboard branch: server 54/54, client 56/56 (2026-10-05); final staging/main runs pending |
 
 ## 2. AC traceability
 
@@ -61,6 +61,8 @@
 ## 3. Execution and evidence rules
 
 Workflow branch local execution on 2026-10-03: from `server/`, `npm.cmd test` passed 16 files/50 tests and `npx.cmd tsc --noEmit` passed; from `client/`, `npm.cmd test` passed 12 files/48 tests, `npm.cmd run build` passed, and `npm.cmd run lint` completed with pre-existing warnings in `AuthContext.tsx` and `StaffQueuePage.tsx`. These are local checks, not the final staging/main or real browser E2E evidence.
+
+Dashboard branch local execution on 2026-10-05: from `server/`, `npm.cmd test` passed 18 files/54 tests and `npx.cmd tsc --noEmit` passed; from `client/`, `npm.cmd test` passed 14 files/56 tests, `npm.cmd run build` passed, and `npm.cmd run lint` completed with warnings. These are local checks; real browser/E2E, final staging/main runs and screenshot evidence remain pending.
 
 - Record the exact command, commit/branch, actual file path, result and evidence link for every executed group. Required tests must not be skipped or replaced with unrelated tests.
 - Verify migration on a copy of previous data and a clean database, including recovery procedure; run idempotent seed twice.
