@@ -34,13 +34,17 @@ beforeAll(async () => {
   ] });
   const now = Date.now();
   for (const [index, requesterId, status, resolvedAt, requesterResolvedAt, updatedAt] of [
-    [1, ownerId, 'WAITING_FOR_REQUESTER', null, null, new Date(now - 60_000)],
-    [2, ownerId, 'OPEN', null, new Date(now - 3_600_000), new Date(now - 120_000)],
+    [1, ownerId, 'WAITING_FOR_REQUESTER', null, null, new Date(now - 600_000)],
+    [2, ownerId, 'OPEN', null, new Date(now - 3_600_000), new Date(now - 30_000)],
     [3, ownerId, 'RESOLVED', new Date(now - 180_000), null, new Date(now - 180_000)],
     [4, ownerId, 'RESOLVED', null, null, new Date(now - 240_000)],
     [5, ownerId, 'CLOSED', new Date(now - 300_000), null, new Date(now - 300_000)],
     [6, foreignId, 'WAITING_FOR_REQUESTER', null, null, new Date(now - 30_000)],
     [7, ownerId, 'NEW', null, null, new Date(now - 31 * 24 * 60 * 60 * 1000)],
+    [8, ownerId, 'WAITING_FOR_REQUESTER', null, null, new Date(now - 120_000)],
+    [9, ownerId, 'WAITING_FOR_REQUESTER', null, null, new Date(now - 180_000)],
+    [10, ownerId, 'WAITING_FOR_REQUESTER', null, null, new Date(now - 240_000)],
+    [11, ownerId, 'WAITING_FOR_REQUESTER', null, null, new Date(now - 300_000)],
   ] as const) {
     const ticket = await prisma.ticket.create({ data: { ticketNumber: `RD-${suffix}-${index}`, requesterId, categoryId: category.id, relatedSystemId: system.id, summary: `Dashboard ${index}`, description: 'Fixture', requestedPriority: 'MEDIUM', itPriority: 'MEDIUM', currentStatus: status, resolvedAt, requesterResolvedAt, updatedAt } });
     ticketIds.push(ticket.id);
@@ -59,8 +63,9 @@ describe('Lab 4 Requester dashboard API', () => {
   it('calculates owned metrics, attention order and real resolved timestamps only', async () => {
     const response = await auth();
     expect(response.status).toBe(200);
-    expect(response.body.data.metrics).toEqual({ openTickets: 3, waitingForRequester: 1, recentlyUpdated: 5, recentlyResolved: 1 });
-    expect(response.body.data.attentionTickets.map((item: { ticketNumber: string }) => item.ticketNumber)).toEqual([`RD-${suffix}-1`, `RD-${suffix}-2`]);
+    expect(response.body.data.metrics).toEqual({ openTickets: 7, waitingForRequester: 5, recentlyUpdated: 9, recentlyResolved: 1 });
+    expect(response.body.data.attentionTickets.map((item: { ticketNumber: string }) => item.ticketNumber)).toEqual([`RD-${suffix}-2`, `RD-${suffix}-8`, `RD-${suffix}-9`, `RD-${suffix}-10`, `RD-${suffix}-11`]);
+    expect(response.body.data.attentionTickets.some((item: { ticketNumber: string }) => item.ticketNumber === `RD-${suffix}-1`)).toBe(false);
     expect(response.body.data.recentlyResolvedTickets.map((item: { ticketNumber: string }) => item.ticketNumber)).toEqual([`RD-${suffix}-3`]);
     expect(response.body.data.recentTickets).toHaveLength(5);
     expect(JSON.stringify(response.body.data)).not.toContain(`RD-${suffix}-6`);

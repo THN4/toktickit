@@ -716,17 +716,19 @@ app.get('/api/requester/dashboard', requireAuthentication, requireRequester, asy
     const owned = { requesterId };
     const open = { requesterId, currentStatus: { in: [...nonTerminalStatuses] } };
     const resolved = { requesterId, currentStatus: 'RESOLVED' as const, resolvedAt: window };
-    const [openTickets, waitingForRequester, recentlyUpdated, recentlyResolved, waiting, indicated, recentTickets, recentlyResolvedTickets] = await Promise.all([
+    const [openTickets, waitingForRequester, recentlyUpdated, recentlyResolved, attentionTickets, recentTickets, recentlyResolvedTickets] = await Promise.all([
       prisma.ticket.count({ where: open }),
       prisma.ticket.count({ where: { ...owned, currentStatus: 'WAITING_FOR_REQUESTER' } }),
       prisma.ticket.count({ where: { ...owned, updatedAt: window } }),
       prisma.ticket.count({ where: resolved }),
-      prisma.ticket.findMany({ where: { ...owned, currentStatus: 'WAITING_FOR_REQUESTER' }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
-      prisma.ticket.findMany({ where: { ...open, currentStatus: { in: nonTerminalStatuses.filter((status) => status !== 'WAITING_FOR_REQUESTER') }, requesterResolvedAt: { not: null } }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+      prisma.ticket.findMany({ where: { ...owned, OR: [
+        { currentStatus: 'WAITING_FOR_REQUESTER' },
+        { currentStatus: { in: nonTerminalStatuses.filter((status) => status !== 'WAITING_FOR_REQUESTER') }, requesterResolvedAt: { not: null } },
+      ] }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
       prisma.ticket.findMany({ where: owned, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
       prisma.ticket.findMany({ where: resolved, orderBy: [{ resolvedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
     ]);
-    return res.status(200).json({ success: true, data: { metrics: { openTickets, waitingForRequester, recentlyUpdated, recentlyResolved }, attentionTickets: [...waiting, ...indicated].slice(0, 5), recentTickets, recentlyResolvedTickets } });
+    return res.status(200).json({ success: true, data: { metrics: { openTickets, waitingForRequester, recentlyUpdated, recentlyResolved }, attentionTickets, recentTickets, recentlyResolvedTickets } });
   } catch {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to fetch Requester dashboard.' } });
   }
