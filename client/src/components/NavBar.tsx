@@ -35,7 +35,8 @@ export default function NavBar() {
 
         {/* Desktop Nav links */}
         <div className="hidden md:flex items-center gap-6">
-          {user?.role === "IT_STAFF" || user?.role === "ADMINISTRATOR" ? <><NavLink to="/staff/tickets" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>{user.role === "IT_STAFF" ? "My Queue" : "Queue"}</NavLink>{user.role === "ADMINISTRATOR" && <NavLink to="/admin/users" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>Users</NavLink>}</> : <>
+          {user?.role === "IT_STAFF" || user?.role === "ADMINISTRATOR" ? <><NavLink to="/staff/dashboard" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>Dashboard</NavLink><NavLink to="/staff/tickets" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>{user.role === "IT_STAFF" ? "My Queue" : "Queue"}</NavLink>{user.role === "ADMINISTRATOR" && <NavLink to="/admin/users" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>Users</NavLink>}</> : <>
+          <NavLink to="/dashboard" className={({ isActive }) => `text-sm font-medium ${isActive ? "text-white underline" : "text-green-100 hover:text-white"}`}>Dashboard</NavLink>
           <NavLink
             to="/my-tickets"
             className={({ isActive }) =>
@@ -126,7 +127,8 @@ export default function NavBar() {
 
           {/* Navigation links on Mobile */}
           <div className="flex flex-col gap-1">
-            {user?.role === "IT_STAFF" || user?.role === "ADMINISTRATOR" ? <><NavLink to="/staff/tickets" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md text-sm font-medium text-green-100 hover:bg-white/10">📋 {user.role === "IT_STAFF" ? "My Queue" : "Queue"}</NavLink>{user.role === "ADMINISTRATOR" && <NavLink to="/admin/users" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md text-sm font-medium text-green-100 hover:bg-white/10">👥 Users</NavLink>}</> : <>
+            {user?.role === "IT_STAFF" || user?.role === "ADMINISTRATOR" ? <><NavLink to="/staff/dashboard" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-white/20 text-white font-semibold" : "text-green-100 hover:bg-white/10"}`}>Dashboard</NavLink><NavLink to="/staff/tickets" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-white/20 text-white font-semibold" : "text-green-100 hover:bg-white/10"}`}>📋 {user.role === "IT_STAFF" ? "My Queue" : "Queue"}</NavLink>{user.role === "ADMINISTRATOR" && <NavLink to="/admin/users" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-white/20 text-white font-semibold" : "text-green-100 hover:bg-white/10"}`}>👥 Users</NavLink>}</> : <>
+            <NavLink to="/dashboard" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-white/20 text-white font-semibold" : "text-green-100 hover:bg-white/10"}`}>Dashboard</NavLink>
             <NavLink
               to="/my-tickets"
               onClick={() => setMobileMenuOpen(false)}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   fetchTickets,
   fetchCategories,
@@ -9,8 +9,10 @@ import {
 } from "../services/api";
 
 type LoadState = "loading" | "success" | "error";
+const supportedStatuses = new Set(['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED']);
 
 export default function MyTicketsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Reference Data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -20,7 +22,13 @@ export default function MyTicketsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedPriority, setSelectedPriority] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState(() => supportedStatuses.has(searchParams.get('status') ?? '') ? searchParams.get('status')! : '');
+
+  useEffect(() => {
+    const next = searchParams.get('status') ?? '';
+    setSelectedStatus(supportedStatuses.has(next) ? next : '');
+    setCurrentPage(1);
+  }, [searchParams]);
 
   // Sorting & Pagination State
   const [sortField, setSortField] = useState<"createdAt" | "updatedAt" | "ticketNumber">("createdAt");
@@ -117,6 +125,7 @@ export default function MyTicketsPage() {
     setSelectedCategory("");
     setSelectedPriority("");
     setSelectedStatus("");
+    setSearchParams({});
     setCurrentPage(1);
   }
 
@@ -231,6 +240,7 @@ export default function MyTicketsPage() {
               value={selectedStatus}
               onChange={(e) => {
                 setSelectedStatus(e.target.value);
+                setSearchParams(e.target.value ? { status: e.target.value } : {});
                 setCurrentPage(1);
               }}
               className="w-full text-sm border border-[#D1E0D8] rounded-lg px-3 py-2 text-[#1A2E22] bg-white focus:outline-none focus:ring-2 focus:ring-[#006B3C]"
@@ -239,8 +249,11 @@ export default function MyTicketsPage() {
               <option value="NEW">NEW</option>
               <option value="OPEN">OPEN</option>
               <option value="IN_PROGRESS">IN PROGRESS</option>
+              <option value="WAITING_FOR_REQUESTER">WAITING FOR REQUESTER</option>
               <option value="RESOLVED">RESOLVED</option>
               <option value="CLOSED">CLOSED</option>
+              <option value="REOPENED">REOPENED</option>
+              <option value="CANCELLED">CANCELLED</option>
             </select>
           </div>
         </div>

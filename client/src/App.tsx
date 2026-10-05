@@ -9,11 +9,12 @@ import ChangePasswordPage from "./pages/ChangePasswordPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import StaffQueuePage from "./pages/StaffQueuePage";
 import StaffTicketDetailPage from "./pages/StaffTicketDetailPage";
+import RequesterDashboardPage from "./pages/RequesterDashboardPage";
+import StaffDashboardPage from "./pages/StaffDashboardPage";
 
 function roleHome(role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR") {
-  if (role === "IT_STAFF") return "/staff/tickets";
-  if (role === "ADMINISTRATOR") return "/admin/users";
-  return "/my-tickets";
+  if (role === "IT_STAFF" || role === "ADMINISTRATOR") return "/staff/dashboard";
+  return "/dashboard";
 }
 
 function AuthLoading() {
@@ -62,7 +63,10 @@ function AppShell() {
       <main className="flex-1">
         <Routes>
           {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/my-tickets" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          <Route path="/dashboard" element={<RequesterRoute><RequesterDashboardPage /></RequesterRoute>} />
+          <Route path="/staff/dashboard" element={<OperationalRoute><StaffDashboardPage /></OperationalRoute>} />
 
           <Route path="/my-tickets" element={
             <RequesterRoute>

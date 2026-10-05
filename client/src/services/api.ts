@@ -132,6 +132,60 @@ export interface TicketDetail extends Ticket {
 export type TicketPriority = "LOW" | "MEDIUM" | "HIGH";
 export type FormalStatus = "NEW" | "OPEN" | "IN_PROGRESS" | "WAITING_FOR_REQUESTER" | "RESOLVED" | "CLOSED" | "REOPENED" | "CANCELLED";
 
+export interface RequesterDashboardTicket {
+  ticketNumber: string;
+  summary: string;
+  currentStatus: FormalStatus;
+  itPriority: TicketPriority;
+  updatedAt: string;
+  resolvedAt: string | null;
+  requesterResolvedAt: string | null;
+}
+
+export interface RequesterDashboardData {
+  metrics: { openTickets: number; waitingForRequester: number; recentlyUpdated: number; recentlyResolved: number };
+  attentionTickets: RequesterDashboardTicket[];
+  recentTickets: RequesterDashboardTicket[];
+  recentlyResolvedTickets: RequesterDashboardTicket[];
+}
+
+export interface StaffDashboardTicket {
+  ticketNumber: string;
+  summary: string;
+  currentStatus: FormalStatus;
+  itPriority: TicketPriority;
+  ticketOwner: { id: number; name: string } | null;
+  updatedAt: string;
+}
+
+export interface StaffDashboardAction {
+  id: number;
+  ticketNumber: string;
+  status: ActionStatus;
+  description: string;
+  assignee: { id: number; name: string } | null;
+  performedBy: { id: number; name: string } | null;
+  actionAt: string;
+  completedAt: string | null;
+  updatedAt: string;
+}
+
+export interface StaffDashboardData {
+  metrics: {
+    unassignedTickets: number;
+    myOwnedTickets: number;
+    byStatus: Record<FormalStatus, number>;
+    byItPriority: Record<TicketPriority, number>;
+    recentlyUpdated: number;
+    myAssignedActions: number;
+    myCompletedActions30d: number;
+  };
+  recentTickets: StaffDashboardTicket[];
+  highPriorityTickets: StaffDashboardTicket[];
+  myAssignedActionItems: StaffDashboardAction[];
+  recentMyCompletedActions: StaffDashboardAction[];
+}
+
 export interface TicketAuthor {
   id: number;
   name: string;
@@ -337,6 +391,14 @@ async function ticketApiRequest<T>(path: string, init?: RequestInit): Promise<T>
   const json = await res.json();
   if (!res.ok) throw new ApiError(json.error?.message || "Ticket request failed.", res.status, json.error?.code, json.error?.field);
   return json.data as T;
+}
+
+export function fetchRequesterDashboard(): Promise<RequesterDashboardData> {
+  return ticketApiRequest('/requester/dashboard');
+}
+
+export function fetchStaffDashboard(): Promise<StaffDashboardData> {
+  return ticketApiRequest('/staff/dashboard');
 }
 
 export function fetchStaffTicketDetail(ticketNumber: string): Promise<StaffTicketDetail> {
