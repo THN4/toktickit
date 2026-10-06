@@ -25,7 +25,7 @@
 | UI-04 | UI component | AC-06/07/08/21 | Permitted Ticket transitions, resolve guidance, confirm, status refresh and preserved draft on conflict | `client/tests/lab-04/TicketWorkflow.test.tsx` | Component cases passed locally (2026-10-03); real browser accessibility/E2E pending |
 | STYLE-01 | UI style | AC-14 | Zen Green components, text-labelled badges, focus and error placement | `client/tests/lab-04/Lab4Styles.test.tsx` | Passed in client suite (2026-10-06) |
 | RESP-01 | Responsive/visual | AC-14 | Dashboard and Actions desktop/tablet/mobile; no page horizontal overflow | `e2e/lab-04/responsive.real.spec.ts` | Passed real browser checks (2026-10-06); 12 screenshots saved under `artifacts/lab-04/screenshots/` |
-| A11Y-01 | Accessibility | AC-14 | Keyboard operation, semantic labels, dialog focus trap/restoration and live feedback | `e2e/lab-04/actions-taken-flow.real.spec.ts` | Dialog keyboard trap and labels passed in earlier real E2E run; focus restoration fallback and its new assertion are not yet rerun because PostgreSQL was unavailable on 2026-10-06 |
+| A11Y-01 | Accessibility | AC-14 | Keyboard operation, semantic labels, dialog focus trap/restoration and live feedback | `e2e/lab-04/actions-taken-flow.real.spec.ts`; `client/tests/lab-04/ActionsTaken.test.tsx` | Real E2E previously passed dialog keyboard trap and semantic labels; client component test verifies focus returns to the Actions Taken heading after the completing button is removed. New real E2E assertion still awaits PostgreSQL rerun |
 | PERF-01 | Performance smoke | AC-10 | Ten seeded dashboard requests, local target p95 <500 ms | `server/tests/lab-04/staff-dashboard.api.test.ts` | Passed in server suite (2026-10-06); test logs measured p95; the run summary retained here does not include the numeric log |
 | E2E-01 | Real E2E | AC-01/02/04/16/17/18 | Browser→real API→PostgreSQL ticket/action lifecycle, assignment, completion, follow-up and resolution gate | `e2e/lab-04/actions-taken-flow.real.spec.ts` | Passed as part of 7/7 real E2E tests (2026-10-06) before the latest focus-restoration assertion was added |
 | E2E-02 | Real E2E | AC-06/07/08/19 | Resolution blocked/unblocked and reopening; API tests cover remaining workflow/audit edges | `e2e/lab-04/actions-taken-flow.real.spec.ts` | Passed as part of 7/7 real E2E tests (2026-10-06); cancellation and advisory indication are covered by API/component tests, not claimed as this browser scenario |
@@ -74,6 +74,16 @@ Issue 6 local execution on 2026-10-06 (branch `feature/6-lab4-regression-hardeni
 | Re-run `npm.cmd run test:e2e:real -- e2e/lab-04/actions-taken-flow.real.spec.ts` after adding focus-restoration assertion | Could not start: global setup's seed failed with PostgreSQL `ECONNREFUSED`; `docker compose up -d` also failed because Docker engine is unavailable in this environment |
 
 The earlier 7/7 real E2E run generated the 12 Lab 4 responsive screenshots in `artifacts/lab-04/screenshots/`. The focus-restoration change is recorded but its new assertion remains pending a database-backed rerun. The mocked browser runner hang is recorded as a runner limitation, not a clean pass.
+
+### Accessibility checklist
+
+- [x] Actions Taken dialog has a semantic dialog role, accessible title and labelled controls.
+- [x] Keyboard Tab navigation wraps within the Actions Taken status dialog (real browser E2E).
+- [x] Focus returns to the Actions Taken heading if successful completion removes the original button (client component test).
+- [x] Completion success is announced through a live status message; failures use an alert.
+- [x] Create Ticket fields have associated labels and inline error descriptions.
+- [x] Desktop, tablet and mobile screenshots exist for both dashboards and Actions Taken; responsive real E2E checks for page-level horizontal overflow.
+- [ ] Rerun the complete real browser suite including the new focus restoration assertion when PostgreSQL is available.
 
 - Record the exact command, commit/branch, actual file path, result and evidence link for every executed group. Required tests must not be skipped or replaced with unrelated tests.
 - Migration/seed verification performed before this issue: seed was run twice and stable action keys/rows were checked. A separate copied Lab 3 database plus clean-database recovery run remains pending.
