@@ -7,7 +7,10 @@ type SortOrder = NonNullable<StaffQueueParams["order"]>;
 
 const statuses = ["", "NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "REOPENED", "CANCELLED"];
 const priorities = ["", "LOW", "MEDIUM", "HIGH"];
-const supportedParam = (params: URLSearchParams, key: string, values: string[]) => values.includes(params.get(key) ?? '') ? params.get(key)! : '';
+const supportedParam = (params: URLSearchParams, key: string, values: string[]) => {
+  const value = params.get(key) ?? '';
+  return values.includes(value) ? value : '';
+};
 
 function Select({
   label,
