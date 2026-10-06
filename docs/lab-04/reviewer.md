@@ -192,6 +192,6 @@
 ## Release Integration Status (2026-10-06)
 
 - PRs #55–#60 are the reviewed feature/documentation PRs merged into `lab4-staging`.
-- Issue #54 / `feature/7-lab4-release-evidence` is the release-evidence branch. Its PR to `lab4-staging` has not been opened yet; do not describe it as reviewed or merged.
+- Issue #54 / `feature/7-lab4-release-evidence` is the release-evidence branch. [PR #61](https://github.com/THN4/toktickit/pull/61) to `lab4-staging` is open, and review has been requested from [@JeffMerry](https://github.com/JeffMerry). Do not describe it as reviewed or merged until the review and merge occur.
 - A release PR from `lab4-staging` to `main`, its final tests, and the actual Project/Kanban completion statuses remain pending. Do not claim the board is Done without verifying it.
 - The peer reviewer name and student ID above match the Lab 3 peer-review record; confirm them before submission if the course reviewer assignment changed.
