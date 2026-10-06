@@ -7,7 +7,8 @@ test("E2E-01: real authentication creates a session, requires password change, a
 
   await login(page, users.requester);
   await completeRequiredPasswordChange(page, "RequesterE2E!2026");
-  await expect(page).toHaveURL(/\/my-tickets$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "My Dashboard" })).toBeVisible();
   await expect(page.getByText("Jennifer Anderson")).toBeVisible();
 
   await page.getByRole("button", { name: "Log out" }).click();

@@ -28,4 +28,25 @@ export async function completeRequiredPasswordChange(page: Page, password: strin
   await page.getByRole("textbox", { name: "New password *", exact: true }).fill(password);
   await page.getByRole("textbox", { name: "Confirm new password *", exact: true }).fill(password);
   await page.getByRole("button", { name: "Save new password" }).click();
+  await page.waitForURL(/\/(dashboard|staff\/dashboard)$/);
+}
+
+/** Log in reliably when another real E2E has already changed the seeded password. */
+export async function loginSeededUser(page: Page, email: string, changedPassword: string) {
+  await login(page, email);
+  await Promise.race([
+    page.waitForURL(/\/change-password$/),
+    page.getByRole("alert").waitFor(),
+    page.waitForURL(/\/(dashboard|staff\/dashboard|admin\/users|staff\/tickets|my-tickets)$/),
+  ]);
+
+  if (new URL(page.url()).pathname === "/change-password") {
+    await completeRequiredPasswordChange(page, changedPassword);
+    return;
+  }
+
+  if (await page.getByRole("alert").isVisible().catch(() => false)) {
+    await login(page, email, changedPassword);
+    await expect(page).not.toHaveURL(/\/login$/);
+  }
 }

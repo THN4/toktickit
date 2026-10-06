@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomBytes, randomUUID } from 'crypto';
+import { performance } from 'node:perf_hooks';
 import request from 'supertest';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -85,5 +86,19 @@ describe('Lab 4 Staff dashboard API', () => {
     expect((await auth(requesterSession)).status).toBe(403);
     expect((await request(app).get('/api/staff/dashboard')).status).toBe(401);
     expect((await auth(staffSession).query({ ownerId: adminId })).status).toBe(400);
+  });
+
+  it('PERF-01: keeps the seeded Staff dashboard response below the local p95 target', async () => {
+    const samples: number[] = [];
+    for (let index = 0; index < 10; index += 1) {
+      const start = performance.now();
+      const response = await auth(staffSession);
+      samples.push(performance.now() - start);
+      expect(response.status).toBe(200);
+    }
+    samples.sort((a, b) => a - b);
+    const p95 = samples[Math.ceil(samples.length * 0.95) - 1]!;
+    console.info(`PERF-01 dashboard: 10 requests, p95=${p95.toFixed(1)}ms`);
+    expect(p95).toBeLessThan(500);
   });
 });
