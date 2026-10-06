@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { completeRequiredPasswordChange, login, users } from "./real.helpers";
+import { loginSeededUser, users } from "./real.helpers";
 
 test("E2E-03: real Administrator session creates an account with an initial password", async ({ page }) => {
   const email = `e2e-admin-${Date.now()}@example.test`;
-  await login(page, users.administrator);
-  await completeRequiredPasswordChange(page, "AdminE2E!2026");
-  await expect(page).toHaveURL(/\/admin\/users$/);
+  await loginSeededUser(page, users.administrator, "AdminE2E!2026");
+  await expect(page).toHaveURL(/\/staff\/dashboard$/);
+  await page.goto("/admin/users");
   await page.getByRole("button", { name: "+ Create User" }).click();
   await page.getByLabel("User name").fill("E2E Created Requester");
   await page.getByLabel("User email").fill(email);

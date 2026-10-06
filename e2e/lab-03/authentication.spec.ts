@@ -42,7 +42,8 @@ test.describe("Lab 3 authentication flow", () => {
     await page.getByRole("textbox", { name: "New password *", exact: true }).fill("ReplacementPassword!123");
     await page.getByRole("textbox", { name: "Confirm new password *", exact: true }).fill("ReplacementPassword!123");
     await page.getByRole("button", { name: "Save new password" }).click();
-    await expect(page).toHaveURL(/\/admin\/users$/);
+    await expect(page).toHaveURL(/\/staff\/dashboard$/);
+    await page.getByRole("link", { name: "Users" }).click();
     await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
     await page.getByRole("button", { name: "Log out" }).click();
     await expect(page).toHaveURL(/\/login$/);

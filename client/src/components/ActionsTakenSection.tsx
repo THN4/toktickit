@@ -128,7 +128,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false, o
     if (!statusDialog) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
-    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled])") ?? []);
+    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])") ?? []);
     focusable()[0]?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !statusBusy) { event.preventDefault(); setStatusDialog(null); return; }
@@ -141,7 +141,11 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false, o
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => { document.removeEventListener("keydown", onKeyDown); previous?.focus(); };
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      const restoreTarget = previous?.isConnected ? previous : document.getElementById("actions-taken-title");
+      restoreTarget?.focus();
+    };
   }, [statusDialog, statusBusy]);
 
   const changeDraft = <K extends keyof Draft>(key: K, value: Draft[K]) => {
@@ -237,7 +241,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false, o
 
   return <section aria-labelledby="actions-taken-title" className="mt-5 rounded-xl border border-[#D1E0D8] bg-white p-4 shadow-sm sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 id="actions-taken-title" className="text-lg font-bold text-[#1A2E22]">Actions Taken</h2><p className="mt-1 text-sm text-[#4A6355]">Work recorded for this ticket, separate from comments and internal notes.</p></div>
+      <div><h2 id="actions-taken-title" tabIndex={-1} className="text-lg font-bold text-[#1A2E22]">Actions Taken</h2><p className="mt-1 text-sm text-[#4A6355]">Work recorded for this ticket, separate from comments and internal notes.</p></div>
       {canManage && !editor && <button type="button" onClick={startCreate} className="min-h-11 rounded-lg bg-[#006B3C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#00532E]">Add Action Taken</button>}
     </div>
     {message && <p role="status" className="mt-3 rounded-lg bg-[#ECFDF3] p-3 text-sm text-[#166534]">{message}</p>}
@@ -255,7 +259,7 @@ export default function ActionsTakenSection({ ticketNumber, canManage = false, o
       <p className="mt-1 text-xs text-[#4A6355]">Creator, performer, status and audit time are recorded by the system.</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-semibold text-[#294536]">Action date and time<input aria-label="Action date and time" aria-invalid={!!fieldErrors.actionAt} aria-describedby={fieldErrors.actionAt ? "action-at-error" : undefined} type="datetime-local" required value={draft.actionAt} onChange={(event) => changeDraft("actionAt", event.target.value)} className="min-h-11 rounded-lg border border-[#B8CEC0] bg-white px-3 py-2" />{fieldErrors.actionAt && <span id="action-at-error" className="text-xs text-[#991B1B]">{fieldErrors.actionAt}</span>}</label>
-        <label className="grid gap-1 text-sm font-semibold text-[#294536]">Assignee<select aria-label="Action assignee" value={draft.assigneeId} disabled={assigneeLoading || !!assigneeError || (editor.kind === "edit" && actions.find((action) => action.id === editor.actionId)?.status === "COMPLETED")} onChange={(event) => changeDraft("assigneeId", event.target.value)} className="min-h-11 rounded-lg border border-[#B8CEC0] bg-white px-3 py-2"><option value="">Unassigned</option>{draft.assigneeId && !assignees.some((user) => String(user.id) === draft.assigneeId) && <option value={draft.assigneeId}>Current assignee (inactive)</option>}{assignees.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select>{assigneeLoading && <span className="text-xs font-normal text-[#4A6355]">Loading active IT Staff…</span>}{assigneeError && <span className="text-xs font-normal text-[#7C4A03]">Assignment choices are unavailable. Retry the lookup above.</span>}{fieldErrors.assigneeId && <span className="text-xs text-[#991B1B]">{fieldErrors.assigneeId}</span>}</label>
+        <label className="grid gap-1 text-sm font-semibold text-[#294536]">Assignee<select aria-label="Action assignee" value={draft.assigneeId} disabled={assigneeLoading || !!assigneeError || (editor.kind === "edit" && actions.find((action) => action.id === editor.actionId)?.status === "COMPLETED")} onChange={(event) => changeDraft("assigneeId", event.target.value)} className="min-h-11 w-full min-w-0 rounded-lg border border-[#B8CEC0] bg-white px-3 py-2"><option value="">Unassigned</option>{draft.assigneeId && !assignees.some((user) => String(user.id) === draft.assigneeId) && <option value={draft.assigneeId}>Current assignee (inactive)</option>}{assignees.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select>{assigneeLoading && <span className="text-xs font-normal text-[#4A6355]">Loading active IT Staff…</span>}{assigneeError && <span className="text-xs font-normal text-[#7C4A03]">Assignment choices are unavailable. Retry the lookup above.</span>}{fieldErrors.assigneeId && <span className="text-xs text-[#991B1B]">{fieldErrors.assigneeId}</span>}</label>
         <label className="grid gap-1 text-sm font-semibold text-[#294536] sm:col-span-2">Description<textarea aria-label="Action description" aria-invalid={!!fieldErrors.description} aria-describedby={fieldErrors.description ? "action-description-error" : undefined} rows={3} maxLength={2000} value={draft.description} onChange={(event) => changeDraft("description", event.target.value)} className="rounded-lg border border-[#B8CEC0] bg-white p-3" />{fieldErrors.description && <span id="action-description-error" className="text-xs text-[#991B1B]">{fieldErrors.description}</span>}</label>
         <label className="grid gap-1 text-sm font-semibold text-[#294536] sm:col-span-2">Result<textarea aria-label="Action result" aria-invalid={!!fieldErrors.result} aria-describedby={fieldErrors.result ? "action-result-error" : undefined} rows={3} maxLength={2000} value={draft.result} onChange={(event) => changeDraft("result", event.target.value)} className="rounded-lg border border-[#B8CEC0] bg-white p-3" />{fieldErrors.result && <span id="action-result-error" className="text-xs text-[#991B1B]">{fieldErrors.result}</span>}</label>
         <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-[#294536] sm:col-span-2"><input aria-label="Follow-up required" type="checkbox" checked={draft.followUpRequired} onChange={(event) => changeDraft("followUpRequired", event.target.checked)} className="h-5 w-5" />Follow-up required?</label>

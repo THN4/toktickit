@@ -152,6 +152,7 @@ describe("Lab 4 Actions Taken UI", () => {
 
   it("requires a result before completion and sends the versioned status change", async () => {
     vi.mocked(api.updateActionStatus).mockResolvedValue({ ...action, status: "COMPLETED", result: "Restored", version: 2 });
+    vi.mocked(api.fetchActionsTaken).mockResolvedValueOnce([action]).mockResolvedValueOnce([{ ...action, status: "COMPLETED", result: "Restored", version: 2 }]);
     render(<ActionsTakenSection ticketNumber="TKT-L4-10" canManage />);
     await screen.findByText("Inspect application logs");
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
@@ -161,6 +162,7 @@ describe("Lab 4 Actions Taken UI", () => {
     fireEvent.change(within(dialog).getByLabelText("Completion result"), { target: { value: "Restored" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirm completion" }));
     await waitFor(() => expect(api.updateActionStatus).toHaveBeenCalledWith(10, 1, "COMPLETED", expect.objectContaining({ result: "Restored" })));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Actions Taken" })).toHaveFocus());
   });
 
   it("keeps a stale edit draft until the user explicitly starts from the latest action", async () => {

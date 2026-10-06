@@ -6,6 +6,7 @@ The project is developed iteratively through multi-sprint laboratory milestones:
 - **Lab 1:** Foundation vertical slice (React UI → Express REST API → Prisma ORM → PostgreSQL).
 - **Lab 2:** Requester Ticketing MVP with complete ticket creation, dashboard filtering, attachment lifecycle management, and responsive design.
 - **Lab 3:** Authenticated role-based service desk with Requester, IT Staff, and Administrator workflows.
+- **Lab 4:** Action Taken tracking, Ticket resolution workflow, and role-based operational dashboards.
 
 ---
 
@@ -26,8 +27,10 @@ The project is developed iteratively through multi-sprint laboratory milestones:
 toktickit/
 ├── artifacts/
 │   ├── lab-02/                 # Lab 2 visual evidence
-│   └── lab-03/
-│       └── screenshots/        # Playwright evidence for auth, Queue, Detail, and admin screens
+│   ├── lab-03/
+│   │   └── screenshots/        # Playwright evidence for auth, Queue, Detail, and admin screens
+│   └── lab-04/
+│       └── screenshots/        # Real E2E dashboard and Actions Taken responsive evidence
 ├── client/                     # React + Vite frontend with Tailwind CSS
 │   ├── src/
 │   │   ├── components/         # NavBar (with Mobile Hamburger Drawer), UI elements
@@ -46,10 +49,12 @@ toktickit/
 ├── docs/
 │   ├── lab-01/                 # Lab 1 specifications, tests, reviewer, ai_use
 │   ├── lab-02/                 # Lab 2 specifications, UI/API specs, reviewer, ai_use
-│   └── lab-03/                 # Lab 3 engineering, API/UI, test, review, and AI-use records
+│   ├── lab-03/                 # Lab 3 engineering, API/UI, test, review, and AI-use records
+│   └── lab-04/                 # Lab 4 engineering, API/UI, test, review, and AI-use records
 ├── e2e/
 │   ├── lab-02/                 # Lab 2 Playwright suites
-│   └── lab-03/                 # Lab 3 browser UI-integration and visual suites
+│   ├── lab-03/                 # Lab 3 browser UI-integration and visual suites
+│   └── lab-04/                 # Lab 4 real browser, database-backed and responsive checks
 ├── docker-compose.yml          # PostgreSQL container definition
 ├── playwright.config.ts        # Playwright E2E test configuration
 ├── package.json                # Root package & test scripts
@@ -126,8 +131,11 @@ Executes client rendering and interaction tests.
 ### 3) End-to-End & Responsive Visual Tests (Playwright)
 From the repository root:
 ```bash
-# Run all E2E and visual tests
-npx playwright test
+# Run mocked browser UI-integration and visual tests
+npm run test:e2e
+
+# Run real browser E2E against the Express server and PostgreSQL
+npm run test:e2e:real
 
 # Or view interactive test report
 npx playwright show-report
@@ -156,6 +164,31 @@ E2E server/session/database verification.
 Screenshots are generated under `artifacts/lab-03/screenshots/` for
 Authentication, Queue, Staff Ticket Detail, and User Management at the required
 desktop, tablet, and mobile viewports.
+
+### Lab 4 quality evidence
+
+```bash
+# Run Lab 4 API/database integration checks
+npm --prefix server test -- lab-04
+
+# Run Lab 4 React UI component checks
+npm --prefix client test -- lab-04
+
+# Run real browser flows using the real session, API, and PostgreSQL database
+npm run test:e2e:real
+```
+
+The real E2E command resets only the deterministic Lab 3 login fixtures before
+running. It requires Docker PostgreSQL, applied Prisma migrations, and
+`LAB3_INITIAL_PASSWORD` in the private `server/.env` file. It verifies role
+dashboards, ownership, Actions Taken lifecycle, resolution gates, and responsive
+screens. Screenshots are saved to `artifacts/lab-04/screenshots/` at desktop
+(1280px), tablet (768px), and mobile (375px). The regular `npm run test:e2e`
+command runs current Lab 3 browser UI-integration tests that intercept API
+requests; those are not real server/database E2E. It excludes the archived Lab 2
+browser flows, which still expect the unauthenticated requester selector removed
+in Lab 3. Lab 2 API/component behavior and authenticated requester flows remain
+covered by the current suites.
 
 ---
 
@@ -189,6 +222,15 @@ desktop, tablet, and mobile viewports.
 - [Lab 3 Report](docs/lab-03/Lab03.pdf) — Consolidated submission evidence
 - [Visual Screenshots](artifacts/lab-03/screenshots/) — Repeatable Playwright screenshots for Lab 3 screens and states
 
+### Lab 4
+- [Sprint Engineering Specification](docs/lab-04/specification.md) — Scope, requirements, business rules, acceptance criteria, and definition of done
+- [REST API Contract](docs/lab-04/api-spec.md) — Actions Taken, workflow, dashboard, authorization, and safe error contracts
+- [UI Specification](docs/lab-04/ui-spec.md) — Role dashboards, Actions Taken, accessibility, responsive rules, and evidence paths
+- [Test Plan and Results](docs/lab-04/tests.md) — Acceptance traceability, actual test commands/results, and evidence status
+- [Peer Review Record](docs/lab-04/reviewer.md) — Review findings, replies, and outcomes
+- [AI Use Record](docs/lab-04/ai-use.md) — Reserved prompt and reflection record
+- [Visual Screenshots](artifacts/lab-04/screenshots/) — Real browser evidence for dashboard and Actions Taken layouts
+
 ---
 
 ## Lab 2 Acceptance Summary
@@ -208,3 +250,10 @@ desktop, tablet, and mobile viewports.
 - **IT Staff Ticketing:** IT Staff can search/filter/sort/paginate the Queue, claim or assign Tickets, set IT Priority, perform permitted formal status transitions, and collaborate through Public Comments and Internal Notes.
 - **Administrator User Management:** Administrators can search, create, edit, deactivate, and reset the initial password for one-role user accounts while protecting self-deactivation and the last active Administrator.
 - **Regression, Responsive, and Evidence Coverage:** Lab 2 requester flows remain protected; Lab 3 includes database-backed API tests, UI tests, mocked browser UI-integration/visual evidence, and separately reviewed Real E2E coverage.
+
+## Lab 4 Acceptance Summary
+
+- **Actions Taken:** IT Staff and Administrators can create, assign, start, complete, cancel, and correct audited actions. Requesters can read actions only on their own Tickets.
+- **Ticket resolution:** Formal resolution requires completed work with a result and no pending action or outstanding required follow-up. Requester resolution indications remain advisory.
+- **Role dashboards:** Requester counts and lists are ownership-scoped; IT Staff and Administrator dashboards show documented operational counts and Queue drill-downs.
+- **Quality and evidence:** Lab 4 includes API/database integration, component/UI, real browser E2E, regression, keyboard/accessibility, and desktop/tablet/mobile checks. See `docs/lab-04/tests.md` for recorded commands and results.
