@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { fetchStaffQueue, type StaffQueueItem, type StaffQueueParams } from "../services/api";
 
 type SortField = NonNullable<StaffQueueParams["sort"]>;
@@ -7,6 +7,10 @@ type SortOrder = NonNullable<StaffQueueParams["order"]>;
 
 const statuses = ["", "NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "REOPENED", "CANCELLED"];
 const priorities = ["", "LOW", "MEDIUM", "HIGH"];
+const supportedParam = (params: URLSearchParams, key: string, values: string[]) => {
+  const value = params.get(key) ?? '';
+  return values.includes(value) ? value : '';
+};
 
 function Select({
   label,
@@ -67,16 +71,26 @@ function formatDate(value: string) {
 }
 
 export default function StaffQueuePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<StaffQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [requestedPriority, setRequestedPriority] = useState("");
-  const [itPriority, setItPriority] = useState("");
-  const [ownerState, setOwnerState] = useState<"" | "assigned" | "unassigned">("");
-  const [ownerId, setOwnerId] = useState("");
+  const [status, setStatus] = useState(() => supportedParam(searchParams, 'status', statuses));
+  const [requestedPriority, setRequestedPriority] = useState(() => supportedParam(searchParams, 'requestedPriority', priorities));
+  const [itPriority, setItPriority] = useState(() => supportedParam(searchParams, 'itPriority', priorities));
+  const [ownerState, setOwnerState] = useState<"" | "assigned" | "unassigned">(() => supportedParam(searchParams, 'ownerState', ['', 'assigned', 'unassigned']) as '' | 'assigned' | 'unassigned');
+  const [ownerId, setOwnerId] = useState(() => /^\d+$/.test(searchParams.get('ownerId') ?? '') && Number(searchParams.get('ownerId')) > 0 ? searchParams.get('ownerId')! : '');
+
+  useEffect(() => {
+    setStatus(supportedParam(searchParams, 'status', statuses));
+    setRequestedPriority(supportedParam(searchParams, 'requestedPriority', priorities));
+    setItPriority(supportedParam(searchParams, 'itPriority', priorities));
+    setOwnerState(supportedParam(searchParams, 'ownerState', ['', 'assigned', 'unassigned']) as '' | 'assigned' | 'unassigned');
+    setOwnerId(/^\d+$/.test(searchParams.get('ownerId') ?? '') && Number(searchParams.get('ownerId')) > 0 ? searchParams.get('ownerId')! : '');
+    setPage(1);
+  }, [searchParams]);
   const [sort, setSort] = useState<SortField>("updatedAt");
   const [order, setOrder] = useState<SortOrder>("desc");
   const [pageSize, setPageSize] = useState(10);
@@ -84,7 +98,7 @@ export default function StaffQueuePage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  const queueParams: StaffQueueParams = {
+  const queueParams: StaffQueueParams = useMemo(() => ({
     search,
     status,
     requestedPriority,
@@ -95,7 +109,7 @@ export default function StaffQueuePage() {
     order,
     page,
     pageSize,
-  };
+  }), [search, status, requestedPriority, itPriority, ownerState, ownerId, sort, order, page, pageSize]);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -110,18 +124,7 @@ export default function StaffQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [
-    search,
-    status,
-    requestedPriority,
-    itPriority,
-    ownerState,
-    ownerId,
-    sort,
-    order,
-    page,
-    pageSize,
-  ]);
+  }, [queueParams]);
 
   useEffect(() => {
     const debounce = window.setTimeout(() => void loadQueue(), 250);
@@ -140,6 +143,7 @@ export default function StaffQueuePage() {
     setItPriority("");
     setOwnerState("");
     setOwnerId("");
+    setSearchParams({});
     setPage(1);
   };
 

@@ -241,10 +241,11 @@ export default function CreateTicketPage() {
           {/* Classification: Category & Related System */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#1A2E22] mb-1">
+              <label htmlFor="create-category" className="block text-sm font-medium text-[#1A2E22] mb-1">
                 Category <span className="text-[#DC2626]">*</span>
               </label>
               <select
+                id="create-category"
                 value={categoryId}
                 onChange={(e) => setCategoryId(Number(e.target.value) || "")}
                 disabled={loadingRefData}
@@ -259,10 +260,11 @@ export default function CreateTicketPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#1A2E22] mb-1">
+              <label htmlFor="create-related-system" className="block text-sm font-medium text-[#1A2E22] mb-1">
                 Related System <span className="text-[#DC2626]">*</span>
               </label>
               <select
+                id="create-related-system"
                 value={relatedSystemId}
                 onChange={(e) => setRelatedSystemId(Number(e.target.value) || "")}
                 disabled={loadingRefData}
@@ -302,31 +304,37 @@ export default function CreateTicketPage() {
           {/* Summary */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium text-[#1A2E22]">
+              <label htmlFor="create-summary" className="block text-sm font-medium text-[#1A2E22]">
                 Summary <span className="text-[#DC2626]">*</span>
               </label>
               <span className="text-xs text-[#4A6355]">{summary.length}/200</span>
             </div>
             <input
+              id="create-summary"
               type="text"
+              aria-invalid={!!errors.summary}
+              aria-describedby={errors.summary ? "create-summary-error" : undefined}
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               placeholder="Brief summary of the issue (min 5 chars)"
               maxLength={200}
               className="w-full border border-[#D1E0D8] rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C] text-[#1A2E22]"
             />
-            {errors.summary && <p className="text-[#B91C1C] text-xs mt-1">{errors.summary}</p>}
+            {errors.summary && <p id="create-summary-error" className="text-[#B91C1C] text-xs mt-1">{errors.summary}</p>}
           </div>
 
           {/* Description */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium text-[#1A2E22]">
+              <label htmlFor="create-description" className="block text-sm font-medium text-[#1A2E22]">
                 Description <span className="text-[#DC2626]">*</span>
               </label>
               <span className="text-xs text-[#4A6355]">{description.length}/3000</span>
             </div>
             <textarea
+              id="create-description"
+              aria-invalid={!!errors.description}
+              aria-describedby={errors.description ? "create-description-error" : undefined}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Detailed description of what happened, steps to reproduce, etc. (min 10 chars)"
@@ -334,7 +342,7 @@ export default function CreateTicketPage() {
               maxLength={3000}
               className="w-full border border-[#D1E0D8] rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C] resize-y text-[#1A2E22]"
             />
-            {errors.description && <p className="text-[#B91C1C] text-xs mt-1">{errors.description}</p>}
+            {errors.description && <p id="create-description-error" className="text-[#B91C1C] text-xs mt-1">{errors.description}</p>}
           </div>
 
           {/* Attachments Section (optional - per ui-spec 4.2 & 4.4) */}

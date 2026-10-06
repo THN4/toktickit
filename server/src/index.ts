@@ -12,6 +12,7 @@ import { PrismaClient } from "../generated/prisma/client.js";
 import { generateTicketNumber } from './utils/ticketNumber.js';
 import { sanitizeStoredFilename } from './utils/fileSanitizer.js';
 import { validateSummary, validateDescription } from './utils/validation.js';
+import { registerActionRoutes } from './actions.js';
 
 const connectionString = `${process.env.DATABASE_URL}`;
 const pool = new Pool({ connectionString });
@@ -698,8 +699,72 @@ app.get('/api/tickets', requireAuthentication, requireRequester, async (req: Aut
   }
 });
 
+// ─── Lab 4 role dashboards ──────────────────────────────────────────────────
+const dashboardStatuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'] as const;
+const dashboardPriorities = ['LOW', 'MEDIUM', 'HIGH'] as const;
+const nonTerminalStatuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'REOPENED'] as const;
+const dashboardTicketSelect = { ticketNumber: true, summary: true, currentStatus: true, itPriority: true, updatedAt: true, resolvedAt: true, requesterResolvedAt: true } as const;
+const staffDashboardTicketSelect = { ticketNumber: true, summary: true, currentStatus: true, itPriority: true, updatedAt: true, ticketOwner: { select: { id: true, name: true } } } as const;
+const dashboardActionSelect = { id: true, status: true, description: true, assignee: { select: { id: true, name: true } }, performedBy: { select: { id: true, name: true } }, actionAt: true, completedAt: true, updatedAt: true, ticket: { select: { ticketNumber: true } } } as const;
+const recentWindow = (now: Date) => ({ gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), lte: now });
+
+app.get('/api/requester/dashboard', requireAuthentication, requireRequester, async (req: AuthenticatedRequest, res: Response) => {
+  if (Object.keys(req.query).length) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Dashboard query parameters are not supported.' } });
+  try {
+    const requesterId = req.auth!.user.id;
+    const window = recentWindow(new Date());
+    const owned = { requesterId };
+    const open = { requesterId, currentStatus: { in: [...nonTerminalStatuses] } };
+    const resolved = { requesterId, currentStatus: 'RESOLVED' as const, resolvedAt: window };
+    const [openTickets, waitingForRequester, recentlyUpdated, recentlyResolved, attentionTickets, recentTickets, recentlyResolvedTickets] = await Promise.all([
+      prisma.ticket.count({ where: open }),
+      prisma.ticket.count({ where: { ...owned, currentStatus: 'WAITING_FOR_REQUESTER' } }),
+      prisma.ticket.count({ where: { ...owned, updatedAt: window } }),
+      prisma.ticket.count({ where: resolved }),
+      prisma.ticket.findMany({ where: { ...owned, OR: [
+        { currentStatus: 'WAITING_FOR_REQUESTER' },
+        { currentStatus: { in: nonTerminalStatuses.filter((status) => status !== 'WAITING_FOR_REQUESTER') }, requesterResolvedAt: { not: null } },
+      ] }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+      prisma.ticket.findMany({ where: owned, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+      prisma.ticket.findMany({ where: resolved, orderBy: [{ resolvedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: dashboardTicketSelect }),
+    ]);
+    return res.status(200).json({ success: true, data: { metrics: { openTickets, waitingForRequester, recentlyUpdated, recentlyResolved }, attentionTickets, recentTickets, recentlyResolvedTickets } });
+  } catch {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to fetch Requester dashboard.' } });
+  }
+});
+
+app.get('/api/staff/dashboard', requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
+  if (Object.keys(req.query).length) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Dashboard query parameters are not supported.' } });
+  try {
+    const userId = req.auth!.user.id;
+    const window = recentWindow(new Date());
+    const active = { currentStatus: { in: [...nonTerminalStatuses] } };
+    const [unassignedTickets, myOwnedTickets, statusGroups, priorityGroups, recentlyUpdated, myAssignedActions, myCompletedActions30d, recentTickets, highPriorityTickets, myAssignedActionItems, recentMyCompletedActions] = await Promise.all([
+      prisma.ticket.count({ where: { ...active, ticketOwnerId: null } }),
+      prisma.ticket.count({ where: { ...active, ticketOwnerId: userId } }),
+      prisma.ticket.groupBy({ by: ['currentStatus'], _count: { _all: true } }),
+      prisma.ticket.groupBy({ by: ['itPriority'], where: active, _count: { _all: true } }),
+      prisma.ticket.count({ where: { updatedAt: window } }),
+      prisma.actionTaken.count({ where: { assigneeId: userId, status: { in: ['PLANNED', 'IN_PROGRESS'] } } }),
+      prisma.actionTaken.count({ where: { performedById: userId, status: 'COMPLETED', completedAt: window } }),
+      prisma.ticket.findMany({ where: { updatedAt: window }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: staffDashboardTicketSelect }),
+      prisma.ticket.findMany({ where: { ...active, itPriority: 'HIGH' }, orderBy: [{ updatedAt: 'desc' }, { ticketNumber: 'desc' }], take: 5, select: staffDashboardTicketSelect }),
+      prisma.actionTaken.findMany({ where: { assigneeId: userId, status: { in: ['PLANNED', 'IN_PROGRESS'] } }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: 5, select: dashboardActionSelect }),
+      prisma.actionTaken.findMany({ where: { performedById: userId, status: 'COMPLETED', completedAt: window }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: 5, select: dashboardActionSelect }),
+    ]);
+    const byStatus = Object.fromEntries(dashboardStatuses.map((status) => [status, statusGroups.find((row) => row.currentStatus === status)?._count._all ?? 0]));
+    const byItPriority = Object.fromEntries(dashboardPriorities.map((priority) => [priority, priorityGroups.find((row) => row.itPriority === priority)?._count._all ?? 0]));
+    const flattenAction = (action: (typeof myAssignedActionItems)[number]) => ({ ...action, ticketNumber: action.ticket.ticketNumber, ticket: undefined });
+    const isStaff = req.auth!.user.role === 'IT_STAFF';
+    return res.status(200).json({ success: true, data: { metrics: { unassignedTickets, myOwnedTickets: isStaff ? myOwnedTickets : 0, byStatus, byItPriority, recentlyUpdated, myAssignedActions: isStaff ? myAssignedActions : 0, myCompletedActions30d }, recentTickets, highPriorityTickets, myAssignedActionItems: isStaff ? myAssignedActionItems.map(flattenAction) : [], recentMyCompletedActions: recentMyCompletedActions.map(flattenAction) } });
+  } catch {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to fetch Staff dashboard.' } });
+  }
+});
+
 // ─── GET /api/staff/tickets — IT Staff Queue ────────────────────────────────
-app.get('/api/staff/tickets', requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/staff/tickets', requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   const { search, status, requestedPriority, itPriority, ownerState, ownerId, sort = 'updatedAt', order = 'desc', page = '1', pageSize = '10' } = req.query;
   const priorities = ['LOW', 'MEDIUM', 'HIGH'];
   const statuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'];
@@ -751,6 +816,14 @@ const statusTransitions: Record<string, readonly string[]> = {
   CANCELLED: ['REOPENED'],
 };
 
+function expectedTicketVersion(body: any): number | null {
+  const value = body?.expectedVersion;
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+const staleTicketError = { success: false, error: { code: 'STALE_VERSION', message: 'This ticket changed. Reload it before saving again.' } };
+const missingVersionError = { success: false, error: { code: 'VALIDATION_ERROR', message: 'expectedVersion must be a positive integer.', field: 'expectedVersion' } };
+
 const staffTicketInclude = {
   category: { select: { id: true, name: true } },
   relatedSystem: { select: { id: true, name: true } },
@@ -771,7 +844,7 @@ function validateCommentContent(content: unknown) {
   return trimmed.length >= 1 && trimmed.length <= 2_000 ? trimmed : null;
 }
 
-app.get('/api/staff/owners', requireAuthentication, requireITStaff, async (_req: AuthenticatedRequest, res: Response) => {
+app.get('/api/staff/owners', requireAuthentication, requireStaffOrAdministrator, async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const owners = await prisma.user.findMany({ where: { role: 'IT_STAFF', isActive: true }, orderBy: [{ name: 'asc' }, { id: 'asc' }], select: { id: true, name: true, email: true } });
     return res.status(200).json({ success: true, data: owners });
@@ -780,7 +853,7 @@ app.get('/api/staff/owners', requireAuthentication, requireITStaff, async (_req:
   }
 });
 
-app.get('/api/staff/tickets/:ticketNumber', requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/staff/tickets/:ticketNumber', requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, include: staffTicketInclude });
     if (!ticket) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
@@ -792,11 +865,14 @@ app.get('/api/staff/tickets/:ticketNumber', requireAuthentication, requireITStaf
 
 app.post('/api/staff/tickets/:ticketNumber/claim', requireTrustedOrigin, requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true, ticketOwnerId: true } });
+    const expectedVersion = expectedTicketVersion(req.body);
+    if (expectedVersion === null) return res.status(400).json(missingVersionError);
+    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true, ticketOwnerId: true, version: true } });
     if (!ticket) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
+    if (ticket.version !== expectedVersion) return res.status(409).json(staleTicketError);
     if (ticket.ticketOwnerId !== null) return res.status(409).json({ success: false, error: { code: 'TICKET_ALREADY_ASSIGNED', message: 'This ticket already has an owner.' } });
-    const claimed = await prisma.ticket.updateMany({ where: { id: ticket.id, ticketOwnerId: null }, data: { ticketOwnerId: req.auth!.user.id } });
-    if (claimed.count !== 1) return res.status(409).json({ success: false, error: { code: 'TICKET_ALREADY_ASSIGNED', message: 'This ticket was claimed by another IT Staff User.' } });
+    const claimed = await prisma.ticket.updateMany({ where: { id: ticket.id, ticketOwnerId: null, version: expectedVersion }, data: { ticketOwnerId: req.auth!.user.id, version: { increment: 1 }, updatedAt: new Date() } });
+    if (claimed.count !== 1) return res.status(409).json(staleTicketError);
     const updated = await prisma.ticket.findUnique({ where: { id: ticket.id }, include: staffTicketInclude });
     return res.status(200).json({ success: true, data: updated });
   } catch {
@@ -804,49 +880,74 @@ app.post('/api/staff/tickets/:ticketNumber/claim', requireTrustedOrigin, require
   }
 });
 
-app.patch('/api/staff/tickets/:ticketNumber/owner', requireTrustedOrigin, requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+app.patch('/api/staff/tickets/:ticketNumber/owner', requireTrustedOrigin, requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const expectedVersion = expectedTicketVersion(req.body);
+    if (expectedVersion === null) return res.status(400).json(missingVersionError);
     const rawOwnerId = req.body?.ownerId;
     const ownerId = rawOwnerId === null ? null : Number(rawOwnerId);
     if (ownerId !== null && (!Number.isInteger(ownerId) || ownerId < 1)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'ownerId must be an active IT Staff User ID or null.' } });
-    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true } });
+    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true, version: true } });
     if (!ticket) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
+    if (ticket.version !== expectedVersion) return res.status(409).json(staleTicketError);
     if (ownerId !== null) {
       const owner = await prisma.user.findFirst({ where: { id: ownerId, role: 'IT_STAFF', isActive: true }, select: { id: true } });
       if (!owner) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'ownerId must reference an active IT Staff User.' } });
     }
-    const updated = await prisma.ticket.update({ where: { id: ticket.id }, data: { ticketOwnerId: ownerId }, include: staffTicketInclude });
+    const changed = await prisma.ticket.updateMany({ where: { id: ticket.id, version: expectedVersion }, data: { ticketOwnerId: ownerId, version: { increment: 1 }, updatedAt: new Date() } });
+    if (changed.count !== 1) return res.status(409).json(staleTicketError);
+    const updated = await prisma.ticket.findUnique({ where: { id: ticket.id }, include: staffTicketInclude });
     return res.status(200).json({ success: true, data: updated });
   } catch {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to update ticket owner.' } });
   }
 });
 
-app.patch('/api/staff/tickets/:ticketNumber/it-priority', requireTrustedOrigin, requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+app.patch('/api/staff/tickets/:ticketNumber/it-priority', requireTrustedOrigin, requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const expectedVersion = expectedTicketVersion(req.body);
+    if (expectedVersion === null) return res.status(400).json(missingVersionError);
     const itPriority = req.body?.itPriority;
     if (!ticketPriorities.includes(itPriority)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'itPriority must be LOW, MEDIUM, or HIGH.' } });
-    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true } });
+    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true, version: true } });
     if (!ticket) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
-    const updated = await prisma.ticket.update({ where: { id: ticket.id }, data: { itPriority }, include: staffTicketInclude });
+    if (ticket.version !== expectedVersion) return res.status(409).json(staleTicketError);
+    const changed = await prisma.ticket.updateMany({ where: { id: ticket.id, version: expectedVersion }, data: { itPriority, version: { increment: 1 }, updatedAt: new Date() } });
+    if (changed.count !== 1) return res.status(409).json(staleTicketError);
+    const updated = await prisma.ticket.findUnique({ where: { id: ticket.id }, include: staffTicketInclude });
     return res.status(200).json({ success: true, data: updated });
   } catch {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to update IT Priority.' } });
   }
 });
 
-app.patch('/api/staff/tickets/:ticketNumber/status', requireTrustedOrigin, requireAuthentication, requireITStaff, async (req: AuthenticatedRequest, res: Response) => {
+app.patch('/api/staff/tickets/:ticketNumber/status', requireTrustedOrigin, requireAuthentication, requireStaffOrAdministrator, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const expectedVersion = expectedTicketVersion(req.body);
+    if (expectedVersion === null) return res.status(400).json(missingVersionError);
     const status = req.body?.status;
     const confirmed = req.body?.confirmed;
     if (!ticketStatuses.includes(status)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'status is invalid.' } });
-    const ticket = await prisma.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true, currentStatus: true } });
-    if (!ticket) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
-    const allowedTransitions = statusTransitions[ticket.currentStatus] ?? [];
-    if (!allowedTransitions.includes(status)) return res.status(409).json({ success: false, error: { code: 'INVALID_STATUS_TRANSITION', message: 'The requested status transition is not permitted.' } });
-    if (['RESOLVED', 'CLOSED', 'CANCELLED'].includes(status) && confirmed !== true) return res.status(400).json({ success: false, error: { code: 'CONFIRMATION_REQUIRED', message: 'Confirmation is required for this status change.' } });
-    const updated = await prisma.ticket.update({ where: { id: ticket.id }, data: { currentStatus: status }, include: staffTicketInclude });
-    return res.status(200).json({ success: true, data: updated });
+    const result = await prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({ where: { ticketNumber: String(req.params.ticketNumber) }, select: { id: true, currentStatus: true, version: true } });
+      if (!ticket) return { statusCode: 404, error: { code: 'NOT_FOUND', message: 'Ticket not found.' } };
+      if (ticket.version !== expectedVersion) return { statusCode: 409, error: staleTicketError.error };
+      if (!(statusTransitions[ticket.currentStatus] ?? []).includes(status)) return { statusCode: 409, error: { code: 'INVALID_STATUS_TRANSITION', message: 'The requested status transition is not permitted.' } };
+      if (['RESOLVED', 'CLOSED', 'CANCELLED'].includes(status) && confirmed !== true) return { statusCode: 400, error: { code: 'CONFIRMATION_REQUIRED', message: 'Confirmation is required for this status change.' } };
+      if (status === 'RESOLVED') {
+        const completedActions = await tx.actionTaken.findMany({ where: { ticketId: ticket.id, status: 'COMPLETED' }, select: { result: true } });
+        const unfinished = await tx.actionTaken.count({ where: { ticketId: ticket.id, status: { in: ['PLANNED', 'IN_PROGRESS'] } } });
+        const followUps = await tx.actionTaken.count({ where: { ticketId: ticket.id, status: { not: 'CANCELLED' }, followUpRequired: true } });
+        if (!completedActions.some((action) => action.result?.trim()) || unfinished > 0 || followUps > 0) return { statusCode: 409, error: { code: 'RESOLUTION_PREREQUISITE', message: 'Resolution requires a completed action with a result, no unfinished actions, and no outstanding follow-up.' } };
+      }
+      const resolutionTime = status === 'RESOLVED' ? { resolvedAt: new Date() } : status === 'REOPENED' ? { resolvedAt: null } : {};
+      const changed = await tx.ticket.updateMany({ where: { id: ticket.id, version: expectedVersion, currentStatus: ticket.currentStatus }, data: { currentStatus: status, ...resolutionTime, version: { increment: 1 }, updatedAt: new Date() } });
+      if (changed.count !== 1) return { statusCode: 409, error: staleTicketError.error };
+      const updated = await tx.ticket.findUnique({ where: { id: ticket.id }, include: staffTicketInclude });
+      return { statusCode: 200, data: updated };
+    });
+    if ('error' in result) return res.status(result.statusCode).json({ success: false, error: result.error });
+    return res.status(200).json({ success: true, data: result.data });
   } catch {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: 'Unable to update ticket status.' } });
   }
@@ -1240,6 +1341,8 @@ app.delete('/api/attachments/:id', requireTrustedOrigin, requireAuthentication, 
     });
   }
 });
+
+registerActionRoutes(app, prisma, { authenticate: requireAuthentication, staff: requireStaffOrAdministrator, trustedOrigin: requireTrustedOrigin });
 
 // Start the server and wait for connections
 if (process.env.NODE_ENV !== 'test') {
