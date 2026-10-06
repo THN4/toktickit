@@ -1,19 +1,25 @@
 # Lab 4 AI Use and Reflection
 
-> **Status:** To be completed at the end of Lab 4. Record only prompts and outcomes that actually occurred.
+ในการทำ Lab 4 ผมใช้ **OpenAI Codex** เพื่อทำความเข้าใจ handout และ engineering contract วางแผนงาน ตรวจสอบ requirement และ test รวมถึงทบทวนปัญหาจาก peer review ก่อนตัดสินใจแก้ไข ผมตรวจคำตอบโดยเทียบกับ `SE+Lab+4.md`, specification, code, test results และ review บน GitHub ด้วยตนเอง
 
-## LLM Used
+ตารางนี้รวม prompt ที่ใช้จริงและ prompt ที่เรียบเรียงเพิ่มเติมจากงานที่ทำไว้ด้วยกันในลำดับเดียว ข้อความที่ใช้จริงระบุไว้ในคอลัมน์ที่มา ส่วน prompt ที่เรียบเรียงเป็นตัวอย่างจากหัวข้อจริงใน Lab 4 และไม่ได้อ้างว่าเป็นข้อความที่ถามตรงตามประวัติแชต
 
-OpenAI Codex. Confirm the final list of tools/models used before submission.
+---
 
-## Selected Key Prompts
+## Selected Prompts
 
-Add 6–10 selected prompts at the end of the sprint. For each, record the purpose, the actual prompt, what was used or corrected, and the related work or evidence. Do not invent prompts, results, tests, or approvals.
-
-| # | Purpose | Actual prompt | Outcome / correction | Related evidence |
-|---|---|---|---|---|
-|  |  |  |  |  |
+| # | จุดประสงค์ | Prompt | ที่มาและสิ่งที่ได้เรียนรู้ |
+|---|---|---|---|
+| 1 | ทำความเข้าใจโจทย์และขอบเขตของ Lab 4 | `ช่วยอ่านรายละเอียดเอกสารนี้ทั้งหมด และช่วยเขียนอธิบายคร่าว ๆ ว่าผมจะต้องทำอะไรบ้าง ... ให้อ้างอิงสิ่งที่ต้องทำจาก docs\lab-04\SE+Lab+4.md เป็นหลัก และเน้นย้ำเรื่องข้อห้ามต่าง ๆ` | **Prompt จริง (คัดบางส่วน):** ช่วยให้เห็นภาพรวมสิ่งที่ต้องส่ง โดยยึด handout เป็นหลัก และแยกข้อห้าม เช่น SLA, external notification, inventory/cost, approval, BI/export และ multi-tenancy/cloud |
+| 2 | ตรวจแผนและเอกสารกับ handout | `ช่วย recheck plan ทั้งหมดอีกทีและไฟล์ใน docs\lab-04 ทั้งหมดว่าทุกอย่างถูกต้องหมดแล้ว ตาม docs\lab-04\SE+Lab+4.md` | **Prompt จริง:** การตรวจย้อนกับ handout ช่วยเชื่อม business rules, acceptance criteria และ tests และทำให้บันทึกสถานะที่ยังขาดหลักฐานเป็น pending |
+| 3 | ขอให้สรุปสิ่งที่ peer reviewer พบและเสนอให้ทำ | `ช่วยสรุป review ของ JeffMerry ใน PR นี้ว่าเพื่อนพบปัญหาอะไร เสนอให้แก้ตรงไหนและเพราะเหตุใด จากนั้นเชื่อมข้อเสนอแนะกับ requirement หรือ test ที่เกี่ยวข้อง แล้วสรุปแนวแก้และ regression test ที่ควรวางแผนทำ` | **เรียบเรียงจากคำขอจริงให้ทบทวน review (PR #57):** ช่วยให้เข้าใจเหตุผลของข้อเสนอแนะก่อนลงมือ เช่น ทำไม assignee lookup ที่ล้มเหลวจึงไม่ควรทำให้ Action list ที่โหลดสำเร็จหายไป และควรพิสูจน์การแก้ด้วย test อย่างไร |
+| 4 | แตก requirement เป็นงานและวาง dependency | `จาก Lab 4 ช่วยแบ่ง requirement เป็น Issues และ branch ตาม dependency ระบุ acceptance criteria กับ tests ของแต่ละงาน และอธิบายว่าควรทำงานใดก่อนหลัง โดยไม่เพิ่ม scope ที่ handout ห้าม` | **เรียบเรียงจากงานจริง:** ผสมการทำความเข้าใจข้อกำหนดกับการวางแผน Issue/branch ทำให้เห็นว่างานใดเป็น dependency และแต่ละส่วนตรวจรับอย่างไร |
+| 5 | ตรวจความครบถ้วนของ engineering contract ก่อน implementation | `ช่วยเทียบ specification, API/UI spec และ test plan กับ handout หาข้อกำหนดที่ขาดหรือขัดกัน แล้วเสนอรายการแก้ตามลำดับ พร้อมชี้ว่าข้อไหนต้องตัดสินใจก่อนเริ่ม implementation` | **เรียบเรียงจากงานจริง:** เชื่อม requirement กับ contract และแผนทดสอบ เพื่อหาช่องว่างก่อนเริ่มลงมือและลดการแก้เอกสารหรือโค้ดซ้ำ |
+| 6 | วาง Git/Issue/PR flow และเข้าใจคำสั่ง | `จากแผน Issues และ dependency ช่วยเสนอ branch กับลำดับคำสั่ง Git สำหรับทำทีละงาน เปิด PR เข้า lab4-staging และ request peer review พร้อมอธิบายผลของแต่ละคำสั่งและจุดที่ควรตรวจสถานะก่อน push หรือ merge` | **เรียบเรียงจากงานจริง:** ต่อยอดจากคำถามจริงเรื่องคำสั่ง Git และการวาง branch/PR ทำให้เข้าใจผลของแต่ละขั้นตอนและตรวจสถานะ repository ก่อนดำเนินการ |
+| 7 | วิเคราะห์ review เรื่อง Dashboard ordering และวางแผนทดสอบ | `จาก review PR #59 ช่วยอธิบายว่าทำไมการ query waiting และ indicated แยกชุดละ 5 แล้วนำมาต่อกันจึงไม่รับประกัน global top-five จากนั้นเสนอ query และ regression fixture ที่ตรง contract` | **เรียบเรียงจาก review จริง:** ทำให้เข้าใจว่าต้องจัดลำดับข้อมูลทั่วทั้งชุดก่อนจำกัดผล และวาง test ให้ Ticket ที่ใหม่กว่ารายการ waiting อันดับห้าปรากฏในผลลัพธ์ |
 
 ## My Reflection
 
-Write a personal reflection after specification, implementation, testing and peer review are complete. Explain how the specification agent and coding agent were used, what needed correction, how results were checked, and what was learned.
+การใช้ AI ในงานนี้มีทั้งการถามเพื่อทำความเข้าใจและการนำความเข้าใจไปวางแผนงานจริง ผมเริ่มจากทำความเข้าใจ handout และข้อห้าม จากนั้นตรวจความเชื่อมโยงระหว่าง requirement, Issues, contract และ tests ก่อนเริ่ม implementation เมื่อได้รับ peer review ผมพยายามทำความเข้าใจสาเหตุและผลกระทบก่อนวางแผนแก้และเพิ่ม regression test เช่นกรณี partial failure ใน PR #57 และ global ordering ใน PR #59
+
+ผมใช้คำตอบเป็นแนวทาง ไม่ถือว่าเป็นหลักฐานว่าระบบถูกต้องโดยตัวมันเอง ผมตรวจข้อเสนอเทียบกับ Lab 4 contract, code, test results และสถานะจริงบน GitHub ก่อนยอมรับการแก้ไขหรือรายงานผล

@@ -1,6 +1,6 @@
 # Lab 4 Test Plan and Traceability
 
-> **Status:** Issue 6 regression hardening executed locally on `feature/6-lab4-regression-hardening` (2026-10-06). Results below distinguish completed local checks from checks still pending. Mocked Playwright coverage is not real E2E.
+> **Status:** Feature checks and Issue 6 hardening are recorded below. Issue 7 release integration is in progress on `feature/7-lab4-release-evidence`, based on staging commit `d5c81a5` (2026-10-06). Main-branch, copied/clean migration, and final real-E2E rerun evidence remain pending. Mocked Playwright coverage is not real E2E.
 
 ## 1. Planned coverage
 
@@ -90,3 +90,25 @@ The earlier 7/7 real E2E run generated the 12 Lab 4 responsive screenshots in `a
 - Real E2E must use the real client, Express server, session cookie and PostgreSQL without `page.route()` API mocks. If mocked browser tests are useful, label them UI integration.
 - Run focused checks during each issue and the full unit/API/UI/authorization/workflow/regression/E2E suite on `lab4-staging` and final `main`. Capture selected database queries proving dashboard numbers.
 - Capture readable desktop, tablet and mobile screenshots of staff dashboard, requester dashboard and Actions Taken, plus keyboard/visual checklist evidence under `artifacts/lab-04/screenshots/`.
+
+## 4. Issue 7 release-integration checks
+
+The current local branch began at `d5c81a5`, the `lab4-staging` merge of reviewed PR #60. The following release-branch checks were run on 2026-10-06; they are local checks against the staged source and do not claim that `main` has been updated:
+
+| Command (run from) | Result |
+|---|---|
+| `client/`: `npm.cmd test -- --run` | Passed: 15 files, 58 tests |
+| `client/`: `npm.cmd run build` | Passed |
+| `client/`: `npm.cmd run lint` | Passed with one existing `react(only-export-components)` warning at `src/contexts/AuthContext.tsx:74` |
+| `server/`: `npx.cmd tsc --noEmit` | Passed |
+| `server/`: `npm.cmd test -- --run` | 19 files / 56 tests passed on the Issue 6 branch and reviewed in PR #60; not rerun on the release branch because the local PostgreSQL service is unavailable |
+| Root: `npm.cmd run test:e2e:real` | Earlier run passed 7/7 on Issue 6; a current rerun is blocked at seed with PostgreSQL `ECONNREFUSED` and unavailable Docker Engine |
+| Root: `npm.cmd run test:e2e -- --reporter=list` | Earlier run displayed 9/9 mocked browser tests but hung after the last test and was interrupted; not a clean command pass |
+
+### Release gates still pending
+
+- Run server/API and full real-browser suites when PostgreSQL is available; retain actual output and screenshot evidence.
+- Run and document the migration on a clean database and a copy of representative Lab 3 data, including recovery verification.
+- Integrate reviewed work into `main`, run the full required suite on that exact main commit, then record its SHA and outputs here.
+- Verify actual GitHub Project #1 statuses for Issues #48–#54; the current CLI credential lacks `read:project`, so no Kanban completion status is claimed.
+- Open and review Issue #54's branch PR before preparing the final staging-to-main release PR. Keep both unmerged until required review and evidence gates pass.

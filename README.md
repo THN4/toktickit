@@ -119,7 +119,7 @@ Server runs at `http://localhost:3000`.
 cd server
 npm test
 ```
-Executes all unit tests (`UNIT-01` to `UNIT-09`) and API integration tests (`API-01` to `API-06`).
+Executes the server unit and database/API integration suites across the implemented labs. Database-backed tests require a reachable, migrated PostgreSQL database and any documented test fixtures.
 
 ### 2) Frontend UI Component Tests (Vitest)
 ```bash
@@ -219,7 +219,7 @@ covered by the current suites.
 - [Test Plan and Traceability](docs/lab-03/tests.md) — Acceptance-criterion mapping across API, UI, browser, visual, and Real E2E coverage
 - [Peer Review Record](docs/lab-03/reviewer.md) — Authored PR reviews, partner reviews, reviewer feedback, responses, and outcomes
 - [AI Use Record](docs/lab-03/ai-use.md) — Selected prompts and Thai reflections
-- [Lab 3 Report](docs/lab-03/Lab03.pdf) — Consolidated submission evidence
+- [Lab 3 Labsheet](docs/lab-03/Lab_3_sheet.md) — Lab 3 source requirements
 - [Visual Screenshots](artifacts/lab-03/screenshots/) — Repeatable Playwright screenshots for Lab 3 screens and states
 
 ### Lab 4
@@ -228,8 +228,9 @@ covered by the current suites.
 - [UI Specification](docs/lab-04/ui-spec.md) — Role dashboards, Actions Taken, accessibility, responsive rules, and evidence paths
 - [Test Plan and Results](docs/lab-04/tests.md) — Acceptance traceability, actual test commands/results, and evidence status
 - [Peer Review Record](docs/lab-04/reviewer.md) — Review findings, replies, and outcomes
-- [AI Use Record](docs/lab-04/ai-use.md) — Reserved prompt and reflection record
+- [AI Use Record](docs/lab-04/ai-use.md) — Selected prompts, outcomes, and a reflection draft for review
 - [Visual Screenshots](artifacts/lab-04/screenshots/) — Real browser evidence for dashboard and Actions Taken layouts
+- [Lab 4 Submission Report (local review draft)](output/pdf/Lab04.pdf) — Parts 1–9 in the required order; pending final-main tests, migration evidence and Project status verification
 
 ---
 
