@@ -1,10 +1,10 @@
 # Lab 4 Test Plan and Traceability
 
-> **Status:** Feature checks and Issue 6 hardening are recorded below. Issue 7 release integration is in progress on `feature/7-lab4-release-evidence`, based on staging commit `d5c81a5` (2026-10-06). Main-branch, copied/clean migration, and final real-E2E rerun evidence remain pending. Mocked Playwright coverage is not real E2E.
+> **Status:** Feature checks and Issue 6 hardening are recorded below. Issue 7 PR #61 is merged into `lab4-staging` at `beff9017410c2ec39476c003db8401d4d1849195`. This test-evidence update is tracked by Issue #63 on `docs/8-lab4-tests-evidence`. The final real-E2E rerun, clean/copied-database migration evidence, recorded performance value, selected dashboard-query evidence, and final `main` verification remain pending. PR #62 (`lab4-staging` → `main`) was closed before merge because these release gates were not complete. Mocked Playwright coverage is not real E2E.
 
 ## 1. Planned coverage
 
-| ID | Type | AC / Rule | Scenario and expected result | Planned test file | Final |
+| ID | Type | AC / Rule | Scenario and expected result | Planned test file | Recorded status / evidence gap |
 |---|---|---|---|---|---|
 | UNIT-01 | Unit | AC-03, AC-16/17 | Field lengths/date/conditional note and Completed Result validation; assignee role validation is covered by API-02 | `server/tests/lab-04/actions-taken.unit.test.ts` | Passed locally: 4 tests (2026-10-01) |
 | UNIT-02 | Unit/API | AC-06/08/17 | Ticket and Action transition matrices plus resolution gate | `server/tests/lab-04/ticket-workflow.api.test.ts` | Covered by API-04; no separate unit test file |
@@ -26,7 +26,7 @@
 | STYLE-01 | UI style | AC-14 | Zen Green components, text-labelled badges, focus and error placement | `client/tests/lab-04/Lab4Styles.test.tsx` | Passed in client suite (2026-10-06) |
 | RESP-01 | Responsive/visual | AC-14 | Dashboard and Actions desktop/tablet/mobile; no page horizontal overflow | `e2e/lab-04/responsive.real.spec.ts` | Passed real browser checks (2026-10-06); 12 screenshots saved under `artifacts/lab-04/screenshots/` |
 | A11Y-01 | Accessibility | AC-14 | Keyboard operation, semantic labels, dialog focus trap/restoration and live feedback | `e2e/lab-04/actions-taken-flow.real.spec.ts`; `client/tests/lab-04/ActionsTaken.test.tsx` | Real E2E previously passed dialog keyboard trap and semantic labels; client component test verifies focus returns to the Actions Taken heading after the completing button is removed. New real E2E assertion still awaits PostgreSQL rerun |
-| PERF-01 | Performance smoke | AC-10 | Ten seeded dashboard requests, local target p95 <500 ms | `server/tests/lab-04/staff-dashboard.api.test.ts` | Passed in server suite (2026-10-06); test logs measured p95; the run summary retained here does not include the numeric log |
+| PERF-01 | Performance smoke | AC-10 | Ten seeded dashboard requests, local target p95 <500 ms | `server/tests/lab-04/staff-dashboard.api.test.ts` | Suite passed in the recorded server run (2026-10-06), but the numeric p95 and its output are not retained here; record them before final sign-off |
 | E2E-01 | Real E2E | AC-01/02/04/16/17/18 | Browser→real API→PostgreSQL ticket/action lifecycle, assignment, completion, follow-up and resolution gate | `e2e/lab-04/actions-taken-flow.real.spec.ts` | Passed as part of 7/7 real E2E tests (2026-10-06) before the latest focus-restoration assertion was added |
 | E2E-02 | Real E2E | AC-06/07/08/19 | Resolution blocked/unblocked and reopening; API tests cover remaining workflow/audit edges | `e2e/lab-04/actions-taken-flow.real.spec.ts` | Passed as part of 7/7 real E2E tests (2026-10-06); cancellation and advisory indication are covered by API/component tests, not claimed as this browser scenario |
 | E2E-03 | Real E2E | AC-09/10/11/20 | Both dashboards, role access, drill-down and ownership | `e2e/lab-04/dashboards.real.spec.ts` | Passed as part of 7/7 real E2E tests (2026-10-06) |
@@ -40,7 +40,7 @@
 | AC-02 | API-01, E2E-01 |
 | AC-03 | UNIT-01, API-02, UI-01 |
 | AC-04 | API-02, UI-01, E2E-01 |
-| AC-05 | API-03, UI-01 |
+| AC-05 | API-03, API-05, UI-01 |
 | AC-06 | API-04, UI-04, E2E-02 |
 | AC-07 | API-04, UI-04, E2E-02 |
 | AC-08 | API-04, API-05, UI-04, E2E-02 |
@@ -60,7 +60,7 @@
 
 ## 3. Execution and evidence rules
 
-Issue 6 local execution on 2026-10-06 (branch `feature/6-lab4-regression-hardening`):
+Issue 6 local execution on 2026-10-06 (branch `feature/6-lab4-regression-hardening`, commit `346fe69a6b8adabf0be28c938c79c7bae945da22`):
 
 | Command | Result |
 |---|---|
@@ -74,6 +74,18 @@ Issue 6 local execution on 2026-10-06 (branch `feature/6-lab4-regression-hardeni
 | Re-run `npm.cmd run test:e2e:real -- e2e/lab-04/actions-taken-flow.real.spec.ts` after adding focus-restoration assertion | Could not start: global setup's seed failed with PostgreSQL `ECONNREFUSED`; `docker compose up -d` also failed because Docker engine is unavailable in this environment |
 
 The earlier 7/7 real E2E run generated the 12 Lab 4 responsive screenshots in `artifacts/lab-04/screenshots/`. The focus-restoration change is recorded but its new assertion remains pending a database-backed rerun. The mocked browser runner hang is recorded as a runner limitation, not a clean pass.
+
+### Evidence index
+
+The screenshots below are visual/responsive evidence only; they do not substitute for test output or the pending keyboard/focus rerun.
+
+| Screen | Desktop / tablet / mobile evidence |
+|---|---|
+| Staff dashboard | [Screenshots](../../artifacts/lab-04/screenshots/staff-dashboard/) |
+| Requester dashboard | [Screenshots](../../artifacts/lab-04/screenshots/requester-dashboard/) |
+| Actions Taken | [Screenshots](../../artifacts/lab-04/screenshots/actions-taken/) |
+
+The execution records below identify the exact commands, branch, and commit where known. Test-runner output is not currently retained as a checked-in artifact, so the summary results must not be treated as a substitute for the final staging/main run output.
 
 ### Accessibility checklist
 
@@ -93,7 +105,7 @@ The earlier 7/7 real E2E run generated the 12 Lab 4 responsive screenshots in `a
 
 ## 4. Issue 7 release-integration checks
 
-The current local branch began at `d5c81a5`, the `lab4-staging` merge of reviewed PR #60. The following release-branch checks were run on 2026-10-06; they are local checks against the staged source and do not claim that `main` has been updated:
+Issue 7's release checks were run on 2026-10-06 on `feature/7-lab4-release-evidence`, based on staging commit `d5c81a5`, after PR #60. Per-command output and the exact source SHA used for each command were not retained. PR #61 was subsequently merged into `lab4-staging` as commit `beff9017410c2ec39476c003db8401d4d1849195`. The checks below are historical local checks; they do not claim that the current staging commit or `main` has passed the full suite:
 
 | Command (run from) | Result |
 |---|---|
@@ -107,8 +119,10 @@ The current local branch began at `d5c81a5`, the `lab4-staging` merge of reviewe
 
 ### Release gates still pending
 
-- Run server/API and full real-browser suites when PostgreSQL is available; retain actual output and screenshot evidence.
-- Run and document the migration on a clean database and a copy of representative Lab 3 data, including recovery verification.
-- Integrate reviewed work into `main`, run the full required suite on that exact main commit, then record its SHA and outputs here.
+- On the current `lab4-staging` commit, run server/API and the complete real-browser suite when PostgreSQL is available; retain the exact command output, commit SHA, and screenshot evidence. The new focus-restoration real-E2E assertion must be included.
+- Run and document the migration on both a clean database and a copy of representative Lab 3 data, including before/after row counts, foreign-key checks, legacy zero-action tickets, and recovery verification. Record the exact database setup and query output without exposing secrets.
+- Record the measured numeric p95 for `PERF-01` and retain its command/output. The current entry only records that the suite passed and says its log measured p95.
+- Capture selected database query output that demonstrates the staff and requester dashboard numbers match the documented predicates.
+- After all required review and test gates pass, create a new staging-to-main PR (PR #62 was closed before merge), run the full required suite on the exact resulting `main` commit, and record its SHA and complete passing output here.
 - Verify actual GitHub Project #1 statuses for Issues #48–#54; the current CLI credential lacks `read:project`, so no Kanban completion status is claimed.
-- Open and review Issue #54's branch PR before preparing the final staging-to-main release PR. Keep both unmerged until required review and evidence gates pass.
+- Issue #54's branch PR #61 has been merged into staging. Issue #63 tracks this test-evidence update; the Issue #63 branch PR must be reviewed before it is merged into staging. Keep the release to `main` gated on the evidence above.
